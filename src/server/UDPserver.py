@@ -4,7 +4,10 @@ serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
 print ('The server is ready to receive')
 while True:
- message, clientAddress = serverSocket.recvfrom(2048)
- modifiedMessage = message.decode().upper()
- serverSocket.sendto(modifiedMessage.encode(),
- clientAddress)
+      messageFromClient1, client1Address = serverSocket.recvfrom(2048)
+      messageFromClient2, client2Address = serverSocket.recvfrom(2048)
+
+
+
+      serverSocket.sendto(messageFromClient2,client1Address)
+      serverSocket.sendto(messageFromClient1,client2Address)
