@@ -7,7 +7,5 @@ while True:
       messageFromClient1, client1Address = serverSocket.recvfrom(2048)
       messageFromClient2, client2Address = serverSocket.recvfrom(2048)
 
-
-
       serverSocket.sendto(messageFromClient2,client1Address)
       serverSocket.sendto(messageFromClient1,client2Address)
