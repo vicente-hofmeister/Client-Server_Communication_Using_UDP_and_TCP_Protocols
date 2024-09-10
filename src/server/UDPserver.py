@@ -1,11 +1,16 @@
 from socket import *
-serverPort = 12000
-serverSocket = socket(AF_INET, SOCK_DGRAM)
-serverSocket.bind(('', serverPort))
-print ('The server is ready to receive')
-while True:
-      messageFromClient1, client1Address = serverSocket.recvfrom(2048)
-      messageFromClient2, client2Address = serverSocket.recvfrom(2048)
 
-      serverSocket.sendto(messageFromClient2,client1Address)
-      serverSocket.sendto(messageFromClient1,client2Address)
+class UDPserver:
+      def __init__(self,serverPort):
+            self.serverPort = serverPort
+            self.serverSocket = socket(AF_INET, SOCK_DGRAM)
+            self.serverSocket.bind(('', self.serverPort))
+            print ('The UDP server is ready to receive')
+
+      def start(self):
+            while True:
+                  messageFromClient1, client1Address = self.serverSocket.recvfrom(2048)
+                  messageFromClient2, client2Address = self.serverSocket.recvfrom(2048)
+
+                  self.serverSocket.sendto(messageFromClient2,client1Address)
+                  self.serverSocket.sendto(messageFromClient1,client2Address)

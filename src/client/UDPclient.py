@@ -1,19 +1,21 @@
 from socket import *
-serverName = '127.0.0.1' #endereco ipv4. localhost = 127.0.0.1
-serverPort = 12000
-clientSocket = socket(AF_INET, SOCK_DGRAM)
 
-myName = input('What is your name?')
-friendName = input('Who do you want to talk to?')
-message = input('What do you want to say?')
-messageToServer= "[{},{},{}]".format(myName, friendName, message)
+class UDPclient:
+      def __init__(self, serverName, serverPort):
+            self.serverName = serverName
+            self.serverPort = serverPort
+            self.clientSocket = socket(AF_INET, SOCK_DGRAM)
 
-clientSocket.sendto(messageToServer.encode(), (serverName, serverPort))
+      def start(self):
+            myName = input('What is your name?')
+            friendName = input('Who do you want to talk to?')
+            message = input('What do you want to say?')
+            messageToServer= "[{},{},{}]".format(myName, friendName, message)
 
-recievedMessage, serverAddress = clientSocket.recvfrom(2048)
+            self.clientSocket.sendto(messageToServer.encode(), (self.serverName, self.serverPort))
 
-print (recievedMessage.decode())
+            recievedMessage, serverAddress = self.clientSocket.recvfrom(2048)
 
+            print (recievedMessage.decode())
 
-
-clientSocket.close()
+            self.clientSocket.close()
