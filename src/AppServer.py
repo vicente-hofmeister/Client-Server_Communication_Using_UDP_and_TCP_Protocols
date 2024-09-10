@@ -3,7 +3,6 @@ import threading
 from server.UDPserver import UDPserver
 from server.TCPserver import TCPserver
 
-
 serverPort = 12000
 
 def clear_terminal():

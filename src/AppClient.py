@@ -1,8 +1,15 @@
+import os
 from client.UDPclient import UDPclient
 from client.TCPclient import TCPclient
 
 serverName = '127.0.0.1'
 serverPort = 12000
+
+def clear_terminal():
+    if os.name == 'nt':  # Windows
+        os.system('cls')
+    else:  # Linux or macOS
+        os.system('clear')
 
 def get_coms_type():
       while True:
@@ -13,6 +20,8 @@ def get_coms_type():
                   print('invalid input')
 
 client = None
+
+clear_terminal()
 
 if get_coms_type() == 'udp':
       client = UDPclient(serverName=serverName, serverPort=serverPort)

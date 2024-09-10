@@ -1,4 +1,5 @@
 from socket import *
+from utils import server_utils as utils
 
 class UDPserver:
       def __init__(self,serverPort):
@@ -9,8 +10,7 @@ class UDPserver:
 
       def start(self):
             while True:
-                  messageFromClient1, client1Address = self.serverSocket.recvfrom(2048)
-                  messageFromClient2, client2Address = self.serverSocket.recvfrom(2048)
+                  messageFromClient, clientAddress = self.serverSocket.recvfrom(2048)
+                  message, address = utils.handleMessage(messageFromClient= messageFromClient, clientAddress= clientAddress)
 
-                  self.serverSocket.sendto(messageFromClient2,client1Address)
-                  self.serverSocket.sendto(messageFromClient1,client2Address)
+                  self.serverSocket.sendto(message,address)
