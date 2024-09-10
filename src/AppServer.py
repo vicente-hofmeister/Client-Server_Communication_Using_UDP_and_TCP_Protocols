@@ -27,12 +27,14 @@ def get_coms_type():
             else:
                   print('invalid input\n')
 
+clear_terminal()
+coms_type = get_coms_type()
 server = None
-if get_coms_type() == 'udp':
+clear_terminal()
+if coms_type == 'udp':
       server = UDPserver(serverPort=serverPort)
 else:
       server = TCPserver(serverPort=serverPort)
-clear_terminal()
 serverThread = threading.Thread(target=server.start)
 serverThread.daemon = True
 serverThread.start()
