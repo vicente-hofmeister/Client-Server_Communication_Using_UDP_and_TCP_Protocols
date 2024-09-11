@@ -10,7 +10,7 @@ class UDPserver:
 
       def start(self):
             while True:
-                  messageFromClient, clientAddress = self.serverSocket.recvfrom(2048)
-                  message, address = utils.handleMessage(messageFromClient= messageFromClient, clientAddress= clientAddress)
+                  clientMessage = self.serverSocket.recvfrom(2048)
+                  serverMessage = utils.handleMessage(clientMessage)
 
-                  self.serverSocket.sendto(message,address)
+                  self.serverSocket.sendto(serverMessage)

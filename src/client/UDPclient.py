@@ -12,33 +12,37 @@ class UDPclient:
 
       def start(self):
             
-            def send_connect(serverAddress):
-                  client_response = utils.choose_friend()
-                  self.clientSocket.sendto(client_response)
-                  client_response = utils.manageResponse(self.clientSocket.recvfrom(2048))
+            def sendConnect():
+                  clientMessage = utils.choose_friend()
+                  self.clientSocket.sendto(clientMessage)
+                  response = utils.manageResponse(self.clientSocket.recvfrom(2048))
 
+                  if type(response) == "str":
+                        if response == "accepted":
+                              return
 
-            messageToRegister = utils.initialize_client()
-            self.clientSocket.sendto(messageToRegister, (self.serverName, self.serverPort))
-            registered = utils.check_register(self.clientSocket.recvfrom(2048))
+            clientMessage = utils.initialize_client()
+            self.clientSocket.sendto(clientMessage, (self.serverName, self.serverPort))
+            serverMessage = self.clientSocket.recvfrom(2048)
+            registered = utils.check_register(serverMessage)
 
             if not registered:
                   self.clientSocket.close()
                   return
 
-            send_connect_thread = threading.Thread(target=send_connect, args= serverAddress)
-            receive_connect_thread = threading.Thread(target= utils.manageResponse, args= self.clientSocket.recvfrom(2048))
+            sendConnectThread = threading.Thread(target=sendConnect)
+            receiveConnectThread = threading.Thread(target= utils.manage_response, args= self.clientSocket.recvfrom(2048))
 
-            send_connect_thread.start()
-            receive_connect_thread.start()
+            sendConnectThread.start()
+            receiveConnectThread.start()
 
             # send_thread = threading.Thread(target= , args= )
-            # receive_thread = threading.Thread(target= utils.manageResponse, args= self.clientSocket.recvfrom(2048))
+            # receive_thread = threading.Thread(target= utils.manage_response, args= self.clientSocket.recvfrom(2048))
 
 
 
             # while True:
-            #       messageToServer, address = utils.manageResponse(self.clientSocket.recvfrom(2048))
+            #       messageToServer, address = utils.manage_response(self.clientSocket.recvfrom(2048))
 
             #       self.clientSocket.sendto(messageToServer, address)
 
