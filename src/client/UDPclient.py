@@ -1,3 +1,4 @@
+import ast
 from socket import *
 import threading
 
@@ -9,17 +10,23 @@ class UDPclient:
             self.serverPort = serverPort
             self.clientSocket = socket(AF_INET, SOCK_DGRAM)
 
-      def send_connect():
-            client_response = utils.choose_firend()
-            
-
       def start(self):
+            
+            def send_connect(serverAddress):
+                  client_response = utils.choose_friend()
+                  self.clientSocket.sendto(client_response)
+                  client_response = utils.manageResponse(self.clientSocket.recvfrom(2048))
+
 
             messageToRegister = utils.initialize_client()
             self.clientSocket.sendto(messageToRegister, (self.serverName, self.serverPort))
-            self.clientSocket.recvfrom(2048)
+            registered = utils.check_register(self.clientSocket.recvfrom(2048))
 
-            send_connect_thread = threading.Thread(target=utils.choose_firend)
+            if not registered:
+                  self.clientSocket.close()
+                  return
+
+            send_connect_thread = threading.Thread(target=send_connect, args= serverAddress)
             receive_connect_thread = threading.Thread(target= utils.manageResponse, args= self.clientSocket.recvfrom(2048))
 
             send_connect_thread.start()
@@ -30,10 +37,10 @@ class UDPclient:
 
 
 
-            while True:
-                  messageToServer, address = utils.manageResponse(self.clientSocket.recvfrom(2048))
+            # while True:
+            #       messageToServer, address = utils.manageResponse(self.clientSocket.recvfrom(2048))
 
-                  self.clientSocket.sendto(messageToServer, address)
+            #       self.clientSocket.sendto(messageToServer, address)
 
                   # friendName = names[1]
                   # message = input('What do you want to say?')
