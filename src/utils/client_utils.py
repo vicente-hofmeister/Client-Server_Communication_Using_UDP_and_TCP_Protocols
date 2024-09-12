@@ -6,7 +6,7 @@ def initialize_client() :
       global myName
       myName = input('What is your name?\n')
 
-      return "['{}','server','register',[]]".format(myName).encode()
+      return "['{}','server','register',['','']]".format(myName).encode()
 
 def decode_message(receivedMessage):
       global sender, receiver, operation, messageType, message, serverAddress
@@ -55,4 +55,4 @@ def manage_response(receivedMessage):
 
 def choose_friend():
       friendName = input("Wish to connect with someone? Write their name!\n")
-      return ("['new_convo',['contact','{}']]".format(friendName).encode(), serverAddress)
+      return ("['{}','server','new_convo',['contact','{}']]".format(myName, friendName).encode(), serverAddress)

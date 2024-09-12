@@ -26,10 +26,16 @@ def handleMessage(clientMessage):
             contact_exists = any(contactName == client[0] for client in clientsList)
             
             if contact_exists:
-                  return "['{}','{}','new_convo',['contact','{}']]".format(sender, contactName, sender)
+                  contact = next(client for client in clientsList if client[0] == contactName)
+                  response = "['{}','{}','new_convo',['contact','{}']]".format(sender, contact[0], sender)
+                  return (response.encode(), contact[1])
             else:
-                  return "['server','{}','response',['new_convo','not_allowed']]".format(sender)
+                  response = "['server','{}','response',['new_convo','not_allowed']]".format(sender)
+                  return (response.encode(), clientAddress)
       elif operation == "response":
             if messageType == "new_convo":
                   if message == "accepted":
-                        return asdadsada
+                        contact = next(client for client in clientsList if client[0] == receiver)
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver)
+                        print("New convo between {} and {}".format(receiver, sender))
+                        return (response.encode(), contact[1])

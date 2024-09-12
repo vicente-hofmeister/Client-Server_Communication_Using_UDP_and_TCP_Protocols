@@ -8,26 +8,31 @@ class UDPclient:
       def __init__(self, serverName, serverPort):
             self.serverName = serverName
             self.serverPort = serverPort
-            self.clientSocket = socket(AF_INET, SOCK_DGRAM)
+            self.socket1 = socket(AF_INET, SOCK_DGRAM)
+            self.socket2 = socket(AF_INET, SOCK_DGRAM)
 
       def start(self):
             
             def sendConnect():
-                  clientMessage = utils.choose_friend()
-                  self.clientSocket.sendto(clientMessage)
-                  response = utils.manageResponse(self.clientSocket.recvfrom(2048))
+                  clientMessage, serverAddress = utils.choose_friend()
+                  self.clientSocket.sendto(clientMessage, serverAddress)
+                  response = utils.manage_response(self.socket1.recvfrom(2048))
 
                   if type(response) == "str":
                         if response == "accepted":
                               return
+            
+            def waitMessage():
+                  utils.manage_response(self.socket2.recvfrom(2048))
+
 
             clientMessage = utils.initialize_client()
-            self.clientSocket.sendto(clientMessage, (self.serverName, self.serverPort))
-            serverMessage = self.clientSocket.recvfrom(2048)
+            self.socket1.sendto(clientMessage, (self.serverName, self.serverPort))
+            serverMessage = self.socket1.recvfrom(2048)
             registered = utils.check_register(serverMessage)
 
             if not registered:
-                  self.clientSocket.close()
+                  self.socket1.close()
                   return
 
             sendConnectThread = threading.Thread(target=sendConnect)
@@ -55,4 +60,4 @@ class UDPclient:
                   # recievedMessage, serverAddress = self.clientSocket.recvfrom(2048)
 
 
-            self.clientSocket.close()
+            # self.clientSocket.close()
