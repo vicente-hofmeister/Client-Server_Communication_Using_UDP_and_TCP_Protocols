@@ -13,7 +13,7 @@ def clear_terminal():
 
 def get_coms_type():
       while True:
-            server_type = input('UDP ou TCP?\n').strip().lower()
+            server_type = input('UDP or TCP?\n').strip().lower()
             if server_type in ['udp', 'tcp']:
                   return server_type
             else:
