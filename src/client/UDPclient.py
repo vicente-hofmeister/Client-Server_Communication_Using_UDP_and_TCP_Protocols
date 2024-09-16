@@ -6,8 +6,7 @@ from utils import client_utils as utils
 
 class UDPclient:
       def __init__(self, serverName, serverPort):
-            self.serverName = serverName
-            self.serverPort = serverPort
+            self.serverAddress = (serverName, serverPort)
             self.clientSocket = socket(AF_INET, SOCK_DGRAM)
             self.stop_event = threading.Event()
 
@@ -29,22 +28,19 @@ class UDPclient:
                         self.stop_event.set()
                         utils.manage_response(receivedMessage)
 
-            clientMessage = utils.initialize_client()
-            self.clientSocket.sendto(clientMessage, (self.serverName, self.serverPort))
-            serverMessage = self.clientSocket.recvfrom(2048)
-            registered = utils.check_register(serverMessage)
-
-            if not registered:
-                  self.clientSocket.close()
-                  return
-
             sendConnectThread = threading.Thread(target=sendConnect)
             receiveConnectThread = threading.Thread(target= waitMessage)
 
             sendConnectThread.start()
             receiveConnectThread.start()
 
+      def sendMessage(self, message):
+            self.clientSocket.sendto(message, self.serverAddress)
+
+      def receiveMessage(self):
+            serverMessage = self.clientSocket.recvfrom(2048)
+            return serverMessage
 
 
-
-            # self.clientSocket.close()
+      def closeConnection(self):
+            self.clientSocket.close()

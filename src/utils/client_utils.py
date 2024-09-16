@@ -7,28 +7,6 @@ global myName, connectionName, sender, receiver, operation, messageType, message
 def __init__(self):
       return
 
-def clear_terminal():
-    if os.name == 'nt':  # Windows
-        os.system('cls')
-    else:  # Linux or macOS
-        os.system('clear')
-
-def initialize_client() :
-      global myName
-      clear_terminal()
-      myName = input('What is your name?\n')
-      return "['{}','server','register',['','']]".format(myName).encode()
-
-def decode_message(receivedMessage):
-      global sender, receiver, operation, messageType, message, serverAddress
-      messageReceived = ast.literal_eval(receivedMessage[0].decode())
-      sender = messageReceived[0]
-      receiver = messageReceived[1]
-      operation = messageReceived[2]
-      messageContent = messageReceived[3]
-      messageType = messageContent[0]
-      message = messageContent[1]
-      serverAddress = receivedMessage[1]
 
 def check_register(receivedMessage):
       decode_message(receivedMessage)
