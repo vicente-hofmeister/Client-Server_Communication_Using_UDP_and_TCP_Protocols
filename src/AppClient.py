@@ -79,20 +79,37 @@ def manage_response(receivedMessage):
                   else:
                         return ("['{}','{}','response',['new_convo','accepted']]".format(myName, sender).encode(), serverAddress)
 
+def getFromKeyboard():
+      answer = ""
+
+      def get_input():
+            answer = input()
+
+      input_thread = threading.Thread(target=get_input)
+      input_thread.start()
+      input_thread.join()
+      while not stop_event.is_set():
+            answer = input()
+            stop_event.set
+
+      return answer
+
+
 def sendConnect():
       global stop_event
       response = ""
       while not stop_event.is_set():
             print("Wish to connect with someone? Write their name!\n")
-            friendName = input()
-            stop_event.set()
-            print("Trying to connect...")
-            clientMessage = "['{}','server','new_convo',['contact','{}']]".format(myName, friendName).encode()
-            client.sendMessage(clientMessage)
-            response = manage_response(client.receiveMessage())
+            friendName = getFromKeyboard()
+            if friendName != "":
+                  stop_event.set()
+                  print("Trying to connect...")
+                  clientMessage = "['{}','server','new_convo',['contact','{}']]".format(myName, friendName).encode()
+                  client.sendMessage(clientMessage)
+                  response = manage_response(client.receiveMessage())
 
-            if type(response) == "str" and response == "denied":
-                  stop_event.clear()
+                  if type(response) == "str" and response == "denied":
+                        stop_event.clear()
 
 def waitMessage():
       while not stop_event.is_set():
