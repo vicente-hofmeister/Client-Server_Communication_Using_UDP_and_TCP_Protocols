@@ -50,7 +50,14 @@ def decodeMessage(clientMessage):
 def handleMessage(clientMessage):
       decodeMessage(clientMessage)
       if operation == "register":
-            clientsList.append([sender,clientAddress])
+            for client in clientsList:
+                  if client[0] == sender:
+                        if client[1] != '':
+                              response = "['server','{}','response',['register','already_registered']]".format(sender)
+                        else:
+                              response = "['server','{}','response',['register-connection','{}']]".format(sender,)
+                              
+            clientsList.append([sender,clientAddress, ''])
             response = "['server','{}','response',['register','registered']]".format(sender)
             print ("Registered: {}, {}".format(sender, str(clientAddress)))
             return (response.encode(), clientAddress)
@@ -63,7 +70,7 @@ def handleMessage(clientMessage):
                   response = "['{}','{}','new_convo',['contact','{}']]".format(sender, contact[0], sender)
                   return (response.encode(), contact[1])
             else:
-                  response = "['server','{}','response',['new_convo','not_allowed']]".format(sender)
+                  response = "['server','{}','response',['new_convo','wait']]".format(sender)
                   return (response.encode(), clientAddress)
       elif operation == "response":
             if messageType == "new_convo":
