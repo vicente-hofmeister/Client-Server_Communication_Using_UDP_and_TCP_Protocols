@@ -10,7 +10,7 @@ serverName = '127.0.0.1'
 serverPort = 12000
 serverAddress = (serverName, serverPort)
 
-global client, myName, connectionName, sender, receiver, operation, messageType, message, stop_event 
+global client, myName, connectionName, connected, sender, receiver, operation, messageType, message, stop_event 
 
 def clear_terminal():
     if os.name == 'nt':  # Windows
@@ -36,27 +36,9 @@ def initialize_client() :
       myName = input('What is your name?\n')
       client.sendMessage(message="['{}','server','register',['','']]".format(myName).encode())
       serverMessage = client.receiveMessage()
+      manage_response(serverMessage)
 
-      response = manage_response(serverMessage)
 
-      if response == 'registered':
-            clear_terminal()
-            print("Registered!\n")
-            time.sleep(2)
-            my_screen()
-      elif response == 'register-connection':
-            answer = input("{} wants to connect! Do you accept? (y or n)")
-            while answer.lower() != "y" and answer.lower() != "n":
-                  print("invalid answer.")
-                  answer = input("{} wants to connect! Do you accept? (y or n)")
-            if answer == "n":
-                  print("Too bad...\n")
-            print("Connected!")
-            clientMessage = "['{}','server','register',['','']]".format(myName).encode()
-      elif response == 'already registered':
-            print("Name already registered. Please, enter another name.")
-            time.sleep(3)
-            initialize_client()
      
 def decode_message(receivedMessage):
       global sender, receiver, operation, messageType, message, serverAddress
@@ -70,15 +52,31 @@ def decode_message(receivedMessage):
       serverAddress = receivedMessage[1]
 
 def manage_response(receivedMessage):
+      global connected
       decode_message(receivedMessage)
       if operation == "response":
             if messageType == "register":
                   if message == "registered":
-                        return "registered"
+                        clear_terminal()
+                        print("Registered!\n")
+                        time.sleep(2)
+                        my_screen()
                   elif message == "already_registered":
-                        return "already registered"
-            elif messageType == "register-connection":
-                  return "register-connection"
+                        print("Name already registered. Please, enter another name.")
+                        time.sleep(3)
+                        initialize_client()
+            elif messageType == "register-connection":                  
+                  answer = input("{} wants to connect! Do you accept? (y or n)".format(message))
+                  while answer.lower() != "y" and answer.lower() != "n":
+                        print("invalid answer.")
+                        answer = input("{} wants to connect! Do you accept? (y or n)".format(message))
+                  if answer == "n":
+                        print("Too bad...\n")
+                  my_screen()
+                  print("Connected!")
+                  connected = True
+                  clientMessage = "['{}','{}','response',['new_convo','accepted']]".format(myName, message).encode()
+                  client.sendMessage(clientMessage)
             elif messageType == "new_convo":
                   if message == "wait":
                         # print("There is no current contact with this name.\n")
@@ -87,15 +85,22 @@ def manage_response(receivedMessage):
                         #       print("Please, make a valid choice.")
                         #       clientChoice = input("Do you wish to: wait(w), make new connection(c) or to quit(q)?")
                         # if clientChoice == "w":
-                        return "wait"
+                        #       clientMessage = "['{}','server','response',['wait','ok']]".format(myName).encode()
+                        manage_response(client.receiveMessage())  
                         # elif clientChoice == "c":
-                        #       return "new connection"
+                        #       connect()
                         # else:
-                        #       return "quit"
-
+                        #       closeConnection()
+                        #       sys.exit(0)
                   elif message == "accepted":
+                        my_screen()
                         print("Connected!")
-                        return "accepted"
+                        connected = True
+                  elif message == "denied":
+                        print("Contact denied the connection :(")
+                        time.sleep(3)
+                        my_screen()
+                        connect()
       elif operation == "new_convo":
             if messageType == "contact":
                   clear_terminal()
@@ -108,21 +113,6 @@ def manage_response(receivedMessage):
                   else:
                         return ("['{}','{}','response',['new_convo','accepted']]".format(myName, sender).encode(), serverAddress)
 
-# def getFromKeyboard():
-#       answer = ""
-
-#       def get_input():
-#             answer = input()
-
-#       input_thread = threading.Thread(target=get_input)
-#       input_thread.start()
-#       input_thread.join()
-#       while not stop_event.is_set():
-#             answer = input()
-#             stop_event.set
-
-#       return answer
-
 def connect():
       global connectionName
       friendName = input("Who do you wish to connect with? Write their name!\n")
@@ -134,22 +124,12 @@ def connect():
 
       connectionName = friendName
       my_screen()
-      print("Waiting connection...")
+      print("Waiting connection with {}...".format(connectionName))
 
       clientMessage = "['{}','server','new_convo',['contact','{}']]".format(myName, connectionName).encode()
       client.sendMessage(clientMessage)
-      response = manage_response(client.receiveMessage())
-
-      if type(response) == "str" and response == "wait":
-            # clientMessage = "['{}','server','response',['wait','ok']]".format(myName).encode()
-            response = manage_response(client.receiveMessage())            
-      # elif type(response) == "str" and response == "new connection":
-      #       connect()
-      # elif type(response) == "str" and response == "quit":
-      #       closeConnection()
-      #       sys.exit(0)
+      manage_response(client.receiveMessage())
       
-
 def waitMessage():
       while not stop_event.is_set():
             receivedMessage = client.receiveMessage()
@@ -163,8 +143,9 @@ def closeConnection():
       client.closeConnection()
 
 def start():
-      global client, stop_event
+      global client, stop_event, connected
       client = None
+      connected = False
       stop_event = threading.Event()
       clear_terminal()
 
@@ -180,8 +161,8 @@ def start():
       waitMessageThread = threading.Thread(target=waitMessage)
       # sendMessageThread = threading.Thread(target=sendMessage)
 
-      sendConnectThread.start()
-      waitMessageThread.start()
+      # sendConnectThread.start()
+      # waitMessageThread.start()
 
       # byebye message here
       closeConnection()

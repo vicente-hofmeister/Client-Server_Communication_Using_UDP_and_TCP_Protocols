@@ -7,7 +7,6 @@ from server.TCPserver import TCPserver
 serverPort = 12000
 
 global server, clientsList, sender, receiver, operation, messageType, message, clientAddress
-clientsList = []
 
 def clear_terminal():
     if os.name == 'nt':  # Windows
@@ -34,8 +33,7 @@ def run_server():
       global clientAddress
       while True:
             clientMessage, clientAddress = server.receiveMessage()
-            serverMessage, clientAddress = handleMessage(clientMessage)
-            server.sendMessage(serverMessage, clientAddress)
+            handleMessage(clientMessage)
 
 def decodeMessage(clientMessage):
       global sender, receiver, operation, messageType, message, clientAddress
@@ -53,35 +51,49 @@ def handleMessage(clientMessage):
             for client in clientsList:
                   if client[0] == sender:
                         if client[1] != '':
-                              response = "['server','{}','response',['register','already_registered']]".format(sender)
+                              response = "['server','{}','response',['register','already_registered']]".format(sender).encode()
+                              server.sendMessage(message=response, address=clientAddress)
                         else:
-                              response = "['server','{}','response',['register-connection','{}']]".format(sender,)
-                              
-            clientsList.append([sender,clientAddress, ''])
-            response = "['server','{}','response',['register','registered']]".format(sender)
-            print ("Registered: {}, {}".format(sender, str(clientAddress)))
-            return (response.encode(), clientAddress)
-      elif operation == "new_convo":
-            contactName = message
-            contact_exists = any(contactName == client[0] for client in clientsList)
+                              for connection in clientsList:
+                                    if connection[2] == sender:
+                                          response = ("['server','{}','response',['register-connection','{}']]".format(sender, connection[2]).encode(), clientAddress)
+                                          clientsList.append([sender,clientAddress, ''])
+                                          print ("Registered: {}, {}".format(sender, str(clientAddress)))
+                                          server.sendMessage(message=response, address=clientAddress)
+
+            response = "['server','{}','response',['register','registered']]".format(sender).encode()
+            server.sendMessage(message=response, address=clientAddress)
             
+            clientsList.append([sender,clientAddress, ''])
+            print ("Registered: {}, {}".format(sender, str(clientAddress)))
+      elif operation == "new_convo":
+            contact_exists = any(message == client[0] for client in clientsList) #confere se contato requerido ja existe
+            for c in clientsList:
+                  if c[0] == sender:
+                        c[2] = message #nome do contato requerido
             if contact_exists:
-                  contact = next(client for client in clientsList if client[0] == contactName)
-                  response = "['{}','{}','new_convo',['contact','{}']]".format(sender, contact[0], sender)
-                  return (response.encode(), contact[1])
+                  contact = next(client for client in clientsList if client[0] == message) #busca contato requerido, caso exista
+                  if contact[2] == sender:
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode()
+                        server.sendMessage(message=response, address=contact[1])
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(contact[0], sender).encode()
+                        server.sendMessage(message=response, address=clientAddress)
+                        print("New convo between {} and {}".format(contact[0], sender))
+                  elif contact[2] != '':
+                        response = "['server','{}','response',['new_convo','denied']]".format(sender).encode()
             else:
-                  response = "['server','{}','response',['new_convo','wait']]".format(sender)
-                  return (response.encode(), clientAddress)
+                  response = "['server','{}','response',['new_convo','wait']]".format(sender).encode()
+                  server.sendMessage(message=response, address=clientAddress)
       elif operation == "response":
             if messageType == "new_convo":
                   if message == "accepted":
                         contact = next(client for client in clientsList if client[0] == receiver)
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver)
-                        print("New convo between {} and {}".format(receiver, sender))
-                        return (response.encode(), contact[1])
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode()
+                        server.sendMessage(message=response, address=contact[1])
 
 def start():
-      global server
+      global server, clientsList
+      clientsList = []
       clear_terminal()
       coms_type = get_coms_type()
       server = None
