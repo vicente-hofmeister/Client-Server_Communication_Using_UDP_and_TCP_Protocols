@@ -140,6 +140,9 @@ def waitMessage():
 
 def closeConnection():
       #byebye message to server
+      clientMessage = "['{}','server','bye_bye',['','']]".format(myName, myName).encode()
+      client.sendMessage(clientMessage)
+
       client.closeConnection()
 
 def start():

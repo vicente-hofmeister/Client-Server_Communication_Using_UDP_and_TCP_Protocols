@@ -53,13 +53,15 @@ def handleMessage(clientMessage):
                         if client[1] != '':
                               response = "['server','{}','response',['register','already_registered']]".format(sender).encode()
                               server.sendMessage(message=response, address=clientAddress)
+                              return
                         else:
                               for connection in clientsList:
                                     if connection[2] == sender:
-                                          response = ("['server','{}','response',['register-connection','{}']]".format(sender, connection[2]).encode(), clientAddress)
+                                          response = "['server','{}','response',['register-connection','{}']]".format(sender, connection[2]).encode()
                                           clientsList.append([sender,clientAddress, ''])
                                           print ("Registered: {}, {}".format(sender, str(clientAddress)))
                                           server.sendMessage(message=response, address=clientAddress)
+                                          return
 
             response = "['server','{}','response',['register','registered']]".format(sender).encode()
             server.sendMessage(message=response, address=clientAddress)
@@ -72,7 +74,7 @@ def handleMessage(clientMessage):
                   if c[0] == sender:
                         c[2] = message #nome do contato requerido
             if contact_exists:
-                  contact = next(client for client in clientsList if client[0] == message) #busca contato requerido, caso exista
+                  contact = next((client for client in clientsList if client[0] == message), None) #busca contato requerido, caso exista
                   if contact[2] == sender:
                         response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode()
                         server.sendMessage(message=response, address=contact[1])
@@ -84,10 +86,28 @@ def handleMessage(clientMessage):
             else:
                   response = "['server','{}','response',['new_convo','wait']]".format(sender).encode()
                   server.sendMessage(message=response, address=clientAddress)
+      elif operation == "bye_bye":
+            print("hello")
+            contact = next((client for client in clientsList if client[0] == message), None)
+            print("({})".format(str(contact)))
+            if contact != None:
+                  print("world")
+                  print(contact[2])
+                  if contact[2] != "":
+                        print("bye")
+                        connection = next(client for client in clientsList if client[0] == contact[2])
+                        if connection[2] == contact[0]:
+                              connection[2] = ""
+                              response = "['server','{}','disconnect',['disconnect','{}']]".format(connection[0], sender).encode()
+                              server.sendMessage(response, connection[1])
+                  contact = None
+                  print ("{} disconnected".format(sender))
+            
+
       elif operation == "response":
             if messageType == "new_convo":
                   if message == "accepted":
-                        contact = next(client for client in clientsList if client[0] == receiver)
+                        contact = next((client for client in clientsList if client[0] == message), None)
                         response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode()
                         server.sendMessage(message=response, address=contact[1])
 
