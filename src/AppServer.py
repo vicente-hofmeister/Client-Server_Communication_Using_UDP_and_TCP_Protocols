@@ -88,7 +88,7 @@ def handleMessage(clientMessage):
                   server.sendMessage(message=response, address=clientAddress)
       elif operation == "bye_bye":
             print("hello")
-            contact = next((client for client in clientsList if client[0] == message), None)
+            contact = next((client for client in clientsList if client[0] == sender), None)
             print("({})".format(str(contact)))
             if contact != None:
                   print("world")

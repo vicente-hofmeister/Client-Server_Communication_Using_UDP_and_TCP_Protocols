@@ -38,8 +38,6 @@ def initialize_client() :
       serverMessage = client.receiveMessage()
       manage_response(serverMessage)
 
-
-     
 def decode_message(receivedMessage):
       global sender, receiver, operation, messageType, message, serverAddress
       messageReceived = ast.literal_eval(receivedMessage[0].decode())
