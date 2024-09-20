@@ -30,10 +30,16 @@ def get_coms_type():
                   print('invalid input\n')
 
 def run_server():
-      global clientAddress
-      while True:
+    global clientAddress
+    while True:
+        try:
             clientMessage, clientAddress = server.receiveMessage()
             handleMessage(clientMessage)
+        except ConnectionResetError:
+            print(f"Connection reset by client: {clientAddress}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
 
 def decodeMessage(clientMessage):
       global sender, receiver, operation, messageType, message, clientAddress
