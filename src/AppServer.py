@@ -92,14 +92,9 @@ def handleMessage(clientMessage):
                   response = "['server','{}','response',['new_convo','wait']]".format(sender).encode()
                   server.sendMessage(message=response, address=clientAddress)
       elif operation == "bye_bye":
-            print("hello")
             contact = next((client for client in clientsList if client[0] == sender), None)
-            print("({})".format(str(contact)))
             if contact != None:
-                  print("world")
-                  print(contact[2])
                   if contact[2] != "":
-                        print("bye")
                         connection = next(client for client in clientsList if client[0] == contact[2])
                         if connection[2] == contact[0]:
                               connection[2] = ""

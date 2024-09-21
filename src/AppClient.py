@@ -36,23 +36,23 @@ def initializeClient() :
       clearTerminal()
       myName = input('What is your name?\n')
       client.sendMessage(message="['{}','server','register',['','']]".format(myName).encode())
-      serverMessage = client.receiveMessage()
+      serverMessage = receiveSingleMessage()
       manageResponse(serverMessage)
 
-def decodeMessage(receivedMessage):
+def decodeMessage(serverMessage):
       global sender, receiver, operation, messageType, message, serverAddress
-      messageReceived = ast.literal_eval(receivedMessage[0].decode())
+      messageReceived = ast.literal_eval(serverMessage[0].decode())
       sender = messageReceived[0]
       receiver = messageReceived[1]
       operation = messageReceived[2]
       messageContent = messageReceived[3]
       messageType = messageContent[0]
       message = messageContent[1]
-      serverAddress = receivedMessage[1]
+      serverAddress = serverMessage[1]
 
-def manageResponse(receivedMessage):
+def manageResponse(serverMessage):
       global connected
-      decodeMessage(receivedMessage)
+      decodeMessage(serverMessage)
       if operation == "response":
             if messageType == "register":
                   if message == "registered":
@@ -85,7 +85,8 @@ def manageResponse(receivedMessage):
                         #       clientChoice = input("Do you wish to: wait(w), make new connection(c) or to quit(q)?")
                         # if clientChoice == "w":
                         #       clientMessage = "['{}','server','response',['wait','ok']]".format(myName).encode()
-                        manageResponse(client.receiveMessage())  
+                        serverMessage = receiveSingleMessage()
+                        manageResponse(serverMessage)  
                         # elif clientChoice == "c":
                         #       connect()
                         # else:
@@ -127,39 +128,51 @@ def connect():
 
       clientMessage = "['{}','server','new_convo',['contact','{}']]".format(myName, connectionName).encode()
       client.sendMessage(clientMessage)
-      manageResponse(client.receiveMessage())
-      
+      serverMessage = receiveSingleMessage()
+      manageResponse(serverMessage=serverMessage)
+
+def receiveSingleMessage():
+      running = True
+      while running:
+            try:
+                  serverMessage = client.receiveMessage()
+                  return serverMessage
+            except socket.timeout:
+                  time.sleep(0.1) 
+            except Exception as e:
+                  print("Error: {}".format(e))
+                  running = False
+
 def waitMessage():
       running = True
       while running:
             if stop_event.is_set():
-                  time.sleep(0.1)
+                  running = False
             else:
                   try:
-                        receivedMessage = client.receiveMessage()
-                        manageResponse(receivedMessage=receivedMessage)
+                        serverMessage = client.receiveMessage()
+                        manageResponse(serverMessage=serverMessage)
                   except socket.timeout:
                         time.sleep(0.1)
                   except Exception as e:
                         print("Error: {}".format(e))
                         running = False
-                   
-                        
-
-
-      while not stop_event.is_set():
-            receivedMessage = client.receiveMessage()
-            stop_event.set()
-            newMessage = manageResponse(receivedMessage)
-            client.sendMessage(newMessage)
-            stop_event.clear()
 
 def waitEntry():
+      while True:
+            entry = input("Want to sendo a message? (type --exit to quit)\n")
+            if entry == "--exit":
+                  print("finishing run\n")
+                  stop_event.set()
+                  break
+            else:
+                  clientMessage = "['{}','server','message',['message','{}']]".format(myName, entry).encode()
+                  client.sendMessage(clientMessage)
       
 
 def closeConnection():
       #byebye message to server
-      clientMessage = "['{}','server','bye_bye',['','']]".format(myName, myName).encode()
+      clientMessage = "['{}','server','bye_bye',['','']]".format(myName).encode()
       client.sendMessage(clientMessage)
 
       client.closeConnection()
@@ -181,8 +194,8 @@ def start():
 
       waitMessageThread = threading.Thread(target=waitMessage)
 
-      # waitMessageThread.start()
-
+      waitMessageThread.start()
+      waitEntry()
       # byebye message here
       closeConnection()
 
