@@ -8,20 +8,20 @@ serverPort = 12000
 
 global server, clientsList, sender, receiver, operation, messageType, message, clientAddress
 
-def clear_terminal():
+def clearTerminal():
     if os.name == 'nt':  # Windows
         os.system('cls')
     else:  # Linux or macOS
         os.system('clear')
 
-def wait_entry():
+def waitEntry():
       while True:
             entry = input('Press \'q\' to stop \n')
             if entry == 'q':
                   print('finishing run \n')
                   break
 
-def get_coms_type():
+def getComsType():
       while True:
             server_type = input('UDP or TCP?\n').strip().lower()
             if server_type in ['udp', 'tcp']:
@@ -29,7 +29,7 @@ def get_coms_type():
             else:
                   print('invalid input\n')
 
-def run_server():
+def runServer():
     global clientAddress
     while True:
         try:
@@ -39,7 +39,6 @@ def run_server():
             print(f"Connection reset by client: {clientAddress}")
         except Exception as e:
             print(f"An error occurred: {e}")
-
 
 def decodeMessage(clientMessage):
       global sender, receiver, operation, messageType, message, clientAddress
@@ -120,17 +119,17 @@ def handleMessage(clientMessage):
 def start():
       global server, clientsList
       clientsList = []
-      clear_terminal()
-      coms_type = get_coms_type()
+      clearTerminal()
+      coms_type = getComsType()
       server = None
-      clear_terminal()
+      clearTerminal()
       if coms_type == 'udp':
             server = UDPserver(serverPort=serverPort)
       else:
             server = TCPserver(serverPort=serverPort)
-      serverThread = threading.Thread(target=run_server)
+      serverThread = threading.Thread(target=runServer)
       serverThread.daemon = True
       serverThread.start()
-      wait_entry()
+      waitEntry()
 
 start()
