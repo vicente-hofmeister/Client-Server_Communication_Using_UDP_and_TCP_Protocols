@@ -7,22 +7,21 @@ from server.TCPserver import TCPserver
 serverPort = 12000
 
 global server, clientsList, sender, receiver, operation, messageType, message, clientAddress
-clientsList = []
 
-def clear_terminal():
+def clearTerminal():
     if os.name == 'nt':  # Windows
         os.system('cls')
     else:  # Linux or macOS
         os.system('clear')
 
-def wait_entry():
+def waitEntry():
       while True:
             entry = input('Press \'q\' to stop \n')
             if entry == 'q':
                   print('finishing run \n')
                   break
 
-def get_coms_type():
+def getComsType():
       while True:
             server_type = input('UDP or TCP?\n').strip().lower()
             if server_type in ['udp', 'tcp']:
@@ -30,12 +29,16 @@ def get_coms_type():
             else:
                   print('invalid input\n')
 
-def run_server():
-      global clientAddress
-      while True:
+def runServer():
+    global clientAddress
+    while True:
+        try:
             clientMessage, clientAddress = server.receiveMessage()
-            serverMessage, clientAddress = handleMessage(clientMessage)
-            server.sendMessage(serverMessage, clientAddress)
+            handleMessage(clientMessage)
+        except ConnectionResetError:
+            print(f"Connection reset by client: {clientAddress}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 def decodeMessage(clientMessage):
       global sender, receiver, operation, messageType, message, clientAddress
@@ -53,46 +56,75 @@ def handleMessage(clientMessage):
             for client in clientsList:
                   if client[0] == sender:
                         if client[1] != '':
-                              response = "['server','{}','response',['register','already_registered']]".format(sender)
+                              response = "['server','{}','response',['register','already_registered']]".format(sender).encode()
+                              server.sendMessage(message=response, address=clientAddress)
+                              return
                         else:
-                              response = "['server','{}','response',['register-connection','{}']]".format(sender,)
-                              
-            clientsList.append([sender,clientAddress, ''])
-            response = "['server','{}','response',['register','registered']]".format(sender)
-            print ("Registered: {}, {}".format(sender, str(clientAddress)))
-            return (response.encode(), clientAddress)
-      elif operation == "new_convo":
-            contactName = message
-            contact_exists = any(contactName == client[0] for client in clientsList)
+                              for connection in clientsList:
+                                    if connection[2] == sender:
+                                          response = "['server','{}','response',['register-connection','{}']]".format(sender, connection[2]).encode()
+                                          clientsList.append([sender,clientAddress, ''])
+                                          print ("Registered: {}, {}".format(sender, str(clientAddress)))
+                                          server.sendMessage(message=response, address=clientAddress)
+                                          return
+
+            response = "['server','{}','response',['register','registered']]".format(sender).encode()
+            server.sendMessage(message=response, address=clientAddress)
             
+            clientsList.append([sender,clientAddress, ''])
+            print ("Registered: {}, {}".format(sender, str(clientAddress)))
+      elif operation == "new_convo":
+            contact_exists = any(message == client[0] for client in clientsList) #confere se contato requerido ja existe
+            for c in clientsList:
+                  if c[0] == sender:
+                        c[2] = message #nome do contato requerido
             if contact_exists:
-                  contact = next(client for client in clientsList if client[0] == contactName)
-                  response = "['{}','{}','new_convo',['contact','{}']]".format(sender, contact[0], sender)
-                  return (response.encode(), contact[1])
+                  contact = next((client for client in clientsList if client[0] == message), None) #busca contato requerido, caso exista
+                  if contact[2] == sender:
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode()
+                        server.sendMessage(message=response, address=contact[1])
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(contact[0], sender).encode()
+                        server.sendMessage(message=response, address=clientAddress)
+                        print("New convo between {} and {}".format(contact[0], sender))
+                  elif contact[2] != '':
+                        response = "['server','{}','response',['new_convo','denied']]".format(sender).encode()
             else:
-                  response = "['server','{}','response',['new_convo','wait']]".format(sender)
-                  return (response.encode(), clientAddress)
+                  response = "['server','{}','response',['new_convo','wait']]".format(sender).encode()
+                  server.sendMessage(message=response, address=clientAddress)
+      elif operation == "bye_bye":
+            contact = next((client for client in clientsList if client[0] == sender), None)
+            if contact != None:
+                  if contact[2] != "":
+                        connection = next(client for client in clientsList if client[0] == contact[2])
+                        if connection[2] == contact[0]:
+                              connection[2] = ""
+                              response = "['server','{}','disconnect',['disconnect','{}']]".format(connection[0], sender).encode()
+                              server.sendMessage(response, connection[1])
+                  contact = None
+                  print ("{} disconnected".format(sender))
+            
+
       elif operation == "response":
             if messageType == "new_convo":
                   if message == "accepted":
-                        contact = next(client for client in clientsList if client[0] == receiver)
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver)
-                        print("New convo between {} and {}".format(receiver, sender))
-                        return (response.encode(), contact[1])
+                        contact = next((client for client in clientsList if client[0] == message), None)
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode()
+                        server.sendMessage(message=response, address=contact[1])
 
 def start():
-      global server
-      clear_terminal()
-      coms_type = get_coms_type()
+      global server, clientsList
+      clientsList = []
+      clearTerminal()
+      coms_type = getComsType()
       server = None
-      clear_terminal()
+      clearTerminal()
       if coms_type == 'udp':
             server = UDPserver(serverPort=serverPort)
       else:
             server = TCPserver(serverPort=serverPort)
-      serverThread = threading.Thread(target=run_server)
+      serverThread = threading.Thread(target=runServer)
       serverThread.daemon = True
       serverThread.start()
-      wait_entry()
+      waitEntry()
 
 start()
