@@ -36,7 +36,7 @@ def runServer():
             clientMessage, clientAddress = server.receiveMessage()
             handleMessage(clientMessage)
         except ConnectionResetError:
-            print(f"Connection reset by client: {clientAddress}")
+            print(f"Connection reset by client: {clientAddress}\n")
         except Exception as e:
             print(f"An error occurred: {e}")
 
@@ -64,7 +64,7 @@ def handleMessage(clientMessage):
                                     if connection[2] == sender:
                                           response = "['server','{}','response',['register-connection','{}']]".format(sender, connection[2]).encode()
                                           clientsList.append([sender,clientAddress, ''])
-                                          print ("Registered: {}, {}".format(sender, str(clientAddress)))
+                                          print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
                                           server.sendMessage(message=response, address=clientAddress)
                                           return
 
@@ -72,7 +72,7 @@ def handleMessage(clientMessage):
             server.sendMessage(message=response, address=clientAddress)
             
             clientsList.append([sender,clientAddress, ''])
-            print ("Registered: {}, {}".format(sender, str(clientAddress)))
+            print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
       elif operation == "new_convo":
             contact_exists = any(message == client[0] for client in clientsList) #confere se contato requerido ja existe
             for c in clientsList:
@@ -85,12 +85,18 @@ def handleMessage(clientMessage):
                         server.sendMessage(message=response, address=contact[1])
                         response = "['{}','{}','response',['new_convo','accepted']]".format(contact[0], sender).encode()
                         server.sendMessage(message=response, address=clientAddress)
-                        print("New convo between {} and {}".format(contact[0], sender))
+                        print("New convo between {} and {}\n".format(contact[0], sender))
                   elif contact[2] != '':
                         response = "['server','{}','response',['new_convo','denied']]".format(sender).encode()
             else:
                   response = "['server','{}','response',['new_convo','wait']]".format(sender).encode()
                   server.sendMessage(message=response, address=clientAddress)
+      elif operation == "message":
+            contact = next((client for client in clientsList if client[0] == sender), None)
+            connection = next(client for client in clientsList if client[0] == contact[2])
+            if messageType == "message":
+                  serverMessage = "['{}','{}','message',['message','{}']]".format(sender, contact[2], message).encode()
+                  server.sendMessage(serverMessage, connection[1])
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
             if contact != None:
@@ -102,8 +108,6 @@ def handleMessage(clientMessage):
                               server.sendMessage(response, connection[1])
                   contact = None
                   print ("{} disconnected".format(sender))
-            
-
       elif operation == "response":
             if messageType == "new_convo":
                   if message == "accepted":

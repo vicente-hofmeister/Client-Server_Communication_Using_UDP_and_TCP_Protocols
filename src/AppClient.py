@@ -21,7 +21,7 @@ def clearTerminal():
 
 def myScreen():
       clearTerminal()
-      print("{}'s chat:".format(myName))
+      print("\033[33m{}'s chat:\033[0m".format(myName))
 
 def getComsType():
       while True:
@@ -34,7 +34,7 @@ def getComsType():
 def initializeClient() :
       global myName
       clearTerminal()
-      myName = input('What is your name?\n')
+      myName = input('What is your name?\n').strip()
       client.sendMessage(message="['{}','server','register',['','']]".format(myName).encode())
       serverMessage = receiveSingleMessage()
       manageResponse(serverMessage)
@@ -112,6 +112,10 @@ def manageResponse(serverMessage):
                         return ("['{}','{}','response',['new_convo','denied']]".format(myName, sender).encode(), serverAddress)
                   else:
                         return ("['{}','{}','response',['new_convo','accepted']]".format(myName, sender).encode(), serverAddress)
+      elif operation == "message":
+            if messageType == "message":
+                  print("\033[34m{}:\033[0m".format(connectionName))
+                  print("\t{}".format(message))
 
 def connect():
       global connectionName
@@ -160,7 +164,7 @@ def waitMessage():
 
 def waitEntry():
       while True:
-            entry = input("Want to sendo a message? (type --exit to quit)\n")
+            entry = input("Want to send a message? (type --exit to quit)\n")
             if entry == "--exit":
                   print("finishing run\n")
                   stop_event.set()
@@ -169,7 +173,6 @@ def waitEntry():
                   clientMessage = "['{}','server','message',['message','{}']]".format(myName, entry).encode()
                   client.sendMessage(clientMessage)
       
-
 def closeConnection():
       #byebye message to server
       clientMessage = "['{}','server','bye_bye',['','']]".format(myName).encode()
@@ -196,7 +199,8 @@ def start():
 
       waitMessageThread.start()
       waitEntry()
-      # byebye message here
+
+      waitMessageThread.join()
       closeConnection()
 
 start()
