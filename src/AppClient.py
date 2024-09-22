@@ -21,22 +21,23 @@ def clearTerminal():
 
 def printMessages():
       for msg in messagesList:
+            printedMessage = ""
             if msg[0] == myName:
-                  print("\033[33m{}:\033[0m".format(msg[0]))
+                  printedMessage = "\033[33m{}:\033[0m".format(msg[0])
             else:
-                  print("\033[34m{}:\033[0m".format(msg[0]))
+                  printedMessage = "\033[34m{}:\033[0m".format(msg[0])
 
             if msg[1] == "message":
-                  print("\t{}".format(msg[2]))
+                  printedMessage = printedMessage + "  {}".format(msg[2])
+            print(printedMessage)
 
 def myScreen(complete):
       clearTerminal()
       print("\033[33m{}'s chat:\033[0m".format(myName))
 
       if complete:
-            print("Want to send a message? (type --exit to quit)\n")
             printMessages()
-
+            print("\033[33mType a new message to send: (--exit to quit)\033[0m")
 def getComsType():
       while True:
             server_type = input('UDP or TCP?\n').strip().lower()
