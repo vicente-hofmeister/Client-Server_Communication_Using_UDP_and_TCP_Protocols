@@ -16,7 +16,7 @@ def clearTerminal():
 
 def waitEntry():
       while True:
-            entry = input('Press \'q\' to stop \n')
+            entry = input('Press \'q\' to stop \n\n')
             if entry == 'q':
                   print('finishing run \n')
                   break
