@@ -6,6 +6,9 @@ class UDPclient:
             self.clientSocket = socket(AF_INET, SOCK_DGRAM)
             self.clientSocket.settimeout(0.1)
 
+      def changeServerAddress(self, newAddress):
+            self.serverAddress = newAddress
+
       def sendMessage(self, message):
             self.clientSocket.sendto(message, self.serverAddress)
 

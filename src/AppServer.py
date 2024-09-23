@@ -94,7 +94,7 @@ def handleMessage(clientMessage):
             else:
                   newServerSocket = TCPserver(serverPort=portCounter, client=sender)
             clientsList.append([sender, newServerSocket, clientAddress, ''])
-            print()
+            sendMessageToClient(client=sender, clientMessage=response)
             print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
       elif operation == "new_convo":
             contact_exists = any(message == client[0] for client in clientsList) #confere se contato requerido ja existe
@@ -119,7 +119,7 @@ def handleMessage(clientMessage):
             connection = next(client for client in clientsList if client[0] == contact[3])
             if messageType == "message":
                   serverMessage = "['{}','{}','message',['message','{}']]".format(sender, contact[3], message).encode()
-                  sendMessageToClient(client=contact[3], clinetMessage=serverMessage)
+                  sendMessageToClient(client=contact[3], clientMessage=serverMessage)
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
             if contact != None:

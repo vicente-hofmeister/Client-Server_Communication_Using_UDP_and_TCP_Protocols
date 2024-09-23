@@ -64,6 +64,10 @@ def decodeMessage(serverMessage):
       messageContent = messageReceived[3]
       messageType = messageContent[0]
       message = messageContent[1]
+
+      for item in messageContent:
+            
+
       if serverAddress != serverMessage[1]:
             serverAddress = serverMessage[1]
       return sender, receiver, operation, messageType, message
