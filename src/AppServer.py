@@ -8,7 +8,7 @@ from server.TCPserver import TCPserver
 
 serverPort = 12000
 
-global masterServer, coms_type, clientsList, clientAddress, portCounter
+global masterServer, coms_type, clientsList, clientAddress, portCounter, serverThreads
 
 def clearTerminal():
     if os.name == 'nt':  # Windows
@@ -68,7 +68,8 @@ def handleMessage(clientMessage):
                   if client[0] == sender:
                         if client[2] != '':
                               response = "['server','{}','response',['register','already_registered']]".format(sender).encode()
-                              sendMessageToClient(client=sender, clientMessage=response)
+                              masterServer.sendMessage(response, clientAddress)
+                              # sendMessageToClient(client=sender, clientMessage=response)
                               return
                         else:
                               for connection in clientsList:
@@ -76,10 +77,15 @@ def handleMessage(clientMessage):
                                           response = "['server','{}','response',['register-connection','{}']]".format(sender, connection[3]).encode()
                                           newServerSocket = None
                                           portCounter = portCounter + 1
+                                          port = serverPort + portCounter
                                           if coms_type == 'udp':
-                                                newServerSocket = UDPserver(serverPort=portCounter, client=sender)
+                                                newServerSocket = UDPserver(serverPort=port, client=sender)
                                           else:
-                                                newServerSocket = TCPserver(serverPort=portCounter, client=sender)
+                                                newServerSocket = TCPserver(serverPort=port, client=sender)
+                                          newServerThread = threading.Thread(target=runServer, args=(newServerSocket,))
+                                          newServerThread.daemon = True
+                                          newServerThread.start()
+                                          serverThreads.append(newServerThread)
                                           clientsList.append([sender, newServerSocket, clientAddress, ''])
                                           print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
                                           sendMessageToClient(client=sender, clientMessage=response)
@@ -89,10 +95,15 @@ def handleMessage(clientMessage):
 
             newServerSocket = None
             portCounter = portCounter + 1
+            port = serverPort + portCounter
             if coms_type == 'udp':
-                  newServerSocket = UDPserver(serverPort=portCounter, client=sender)
+                  newServerSocket = UDPserver(serverPort=port, client=sender)
             else:
-                  newServerSocket = TCPserver(serverPort=portCounter, client=sender)
+                  newServerSocket = TCPserver(serverPort=port, client=sender)
+            newServerThread = threading.Thread(target=runServer, args=(newServerSocket,))
+            newServerThread.daemon = True
+            newServerThread.start()
+            serverThreads.append(newServerThread)
             clientsList.append([sender, newServerSocket, clientAddress, ''])
             sendMessageToClient(client=sender, clientMessage=response)
             print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
@@ -139,8 +150,9 @@ def handleMessage(clientMessage):
                         sendMessageToClient(client=receiver, clientMessage=response)
 
 def start():
-      global masterServer, clientsList, coms_type, portCounter
+      global masterServer, clientsList, coms_type, portCounter, serverThreads
       clientsList = []
+      serverThreads = []
       portCounter = 0
       clearTerminal()
       coms_type = getComsType()
@@ -152,9 +164,9 @@ def start():
       else:
             masterServer = TCPserver(serverPort=serverPort, client="master")
             print ('The TCP server is ready to receive')
-      serverThread = threading.Thread(target=runServer, args=(masterServer,))
-      serverThread.daemon = True
-      serverThread.start()
+      masterServerThread = threading.Thread(target=runServer, args=(masterServer,))
+      masterServerThread.daemon = True
+      masterServerThread.start()
       waitEntry()
 
 start()

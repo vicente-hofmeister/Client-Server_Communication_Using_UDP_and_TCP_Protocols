@@ -9,8 +9,8 @@ class UDPserver:
             self.client = client
 
       def receiveMessage(self):
-            return self.serverSocket.recvfrom(2048)
-      
+            clientMessage =  self.serverSocket.recvfrom(2048)
+            return clientMessage
       def sendMessage(self, message, address):
             self.serverSocket.sendto(message, address)
 
