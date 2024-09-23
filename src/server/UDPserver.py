@@ -1,21 +1,20 @@
 from socket import *
 
 class UDPserver:
-      def __init__(self,serverPort):
+      def __init__(self,serverPort,client):
             self.serverPort = serverPort
-            self.masterSocket = socket(AF_INET, SOCK_DGRAM)
-            self.masterSocket.bind(('', self.serverPort))
-            # self.socketList = []
-            print ('The UDP server is ready to receive')
-
-      # def newSocket(self):
-      #       clientSocket = socket(AF_INET, SOCK_DGRAM)
-      #       clientSocket.bind(('', (self.serverPort + 1 + len(self.socketList))))
+            self.serverSocket = socket(AF_INET, SOCK_DGRAM)
+            self.serverSocket.bind(('', self.serverPort))
+            self.serverSocket.settimeout(0.1)
+            self.client = client
 
       def receiveMessage(self):
-            return self.masterSocket.recvfrom(2048)
-      
+            clientMessage =  self.serverSocket.recvfrom(2048)
+            return clientMessage
       def sendMessage(self, message, address):
-            self.masterSocket.sendto(message, address)
+            self.serverSocket.sendto(message, address)
+
+      def getClient(self):
+            return self.client
 
       # def closeSocket(self, ):

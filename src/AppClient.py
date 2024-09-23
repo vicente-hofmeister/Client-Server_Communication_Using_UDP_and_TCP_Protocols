@@ -4,14 +4,17 @@ import socket
 import sys
 import threading
 import time
+import colorama
+from colorama import Fore, Style
 from client.UDPclient import UDPclient
 from client.TCPclient import TCPclient
+
+global client, myName, connectionName, connected, stop_event, messagesList, serverAddress
 
 serverName = '127.0.0.1'
 serverPort = 12000
 serverAddress = (serverName, serverPort)
-
-global client, myName, connectionName, connected, sender, receiver, operation, messageType, message, stop_event 
+colorama.init(autoreset=True)
 
 def clearTerminal():
     if os.name == 'nt':  # Windows
@@ -19,9 +22,27 @@ def clearTerminal():
     else:  # Linux or macOS
         os.system('clear')
 
-def myScreen():
-      clearTerminal()
-      print("{}'s chat:".format(myName))
+def printMessages():
+    for msg in messagesList:
+        printedMessage = ""
+        if msg[0] == myName:
+            printedMessage = f"{Fore.YELLOW}{msg[0]}:{Style.RESET_ALL}"
+        else:
+            printedMessage = f"{Fore.BLUE}{msg[0]}:{Style.RESET_ALL}"
+
+        if msg[1] == "message":
+            printedMessage += f"  {msg[2]}"
+        
+        print(printedMessage)
+
+def myScreen(complete):
+    clearTerminal()
+    print(f"{Fore.YELLOW}{myName}'s chat:{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}Talking to {serverAddress}{Style.RESET_ALL}")
+
+    if complete:
+        printMessages()
+        print(f"{Fore.YELLOW}Type a new message to send: (--exit to quit){Style.RESET_ALL}")
 
 def getComsType():
       while True:
@@ -34,50 +55,57 @@ def getComsType():
 def initializeClient() :
       global myName
       clearTerminal()
-      myName = input('What is your name?\n')
+      myName = input('What is your name?\n').strip()
       client.sendMessage(message="['{}','server','register',['','']]".format(myName).encode())
       serverMessage = receiveSingleMessage()
       manageResponse(serverMessage)
 
 def decodeMessage(serverMessage):
-      global sender, receiver, operation, messageType, message, serverAddress
+      global serverAddress
       messageReceived = ast.literal_eval(serverMessage[0].decode())
       sender = messageReceived[0]
       receiver = messageReceived[1]
       operation = messageReceived[2]
       messageContent = messageReceived[3]
       messageType = messageContent[0]
-      message = messageContent[1]
-      serverAddress = serverMessage[1]
+      message = []
+      for i in range(1,len(messageContent)):
+            message.append(messageContent[i])
+      
+      if serverAddress != serverMessage[1]:
+            serverAddress = serverMessage[1]
+            client.changeServerAddress(newAddress=serverAddress)
+      return sender, receiver, operation, messageType, message
 
 def manageResponse(serverMessage):
-      global connected
-      decodeMessage(serverMessage)
+      global connected, messagesList
+      sender, receiver, operation, messageType, message= decodeMessage(serverMessage)
       if operation == "response":
             if messageType == "register":
-                  if message == "registered":
+                  if message[0] == "registered":
                         clearTerminal()
                         print("Registered!\n")
                         time.sleep(2)
-                        myScreen()
-                  elif message == "already_registered":
+                        myScreen(False)
+                  elif message[0] == "already_registered":
                         print("Name already registered. Please, enter another name.")
                         time.sleep(3)
                         initializeClient()
             elif messageType == "register-connection":                  
-                  answer = input("{} wants to connect! Do you accept? (y or n)".format(message))
+                  answer = input("{} wants to connect! Do you accept? (y or n)".format(message[0]))
                   while answer.lower() != "y" and answer.lower() != "n":
                         print("invalid answer.")
-                        answer = input("{} wants to connect! Do you accept? (y or n)".format(message))
+                        answer = input("{} wants to connect! Do you accept? (y or n)".format(message[0]))
                   if answer == "n":
                         print("Too bad...\n")
-                  myScreen()
+                  myScreen(False)
                   print("Connected!")
+                  messagesList = []
                   connected = True
-                  clientMessage = "['{}','{}','response',['new_convo','accepted']]".format(myName, message).encode()
+                  clientMessage = "['{}','{}','response',['new_convo','accepted']]".format(myName, message[0]).encode()
                   client.sendMessage(clientMessage)
             elif messageType == "new_convo":
-                  if message == "wait":
+                  if message[0] == "wait":
                         # print("There is no current contact with this name.\n")
                         # clientChoice = input("Do you wish to: wait(w), make new connection(c) or to quit(q)?")
                         # while clientChoice != "w" and clientChoice != "c" and clientChoice != "q":
@@ -92,38 +120,43 @@ def manageResponse(serverMessage):
                         # else:
                         #       closeConnection()
                         #       sys.exit(0)
-                  elif message == "accepted":
-                        myScreen()
+                  elif message[0] == "accepted":
+                        myScreen(False)
                         print("Connected!")
+                        time.sleep(3)
+                        messagesList = []
                         connected = True
-                  elif message == "denied":
+                  elif message[0] == "denied":
                         print("Contact denied the connection :(")
                         time.sleep(3)
-                        myScreen()
+                        myScreen(False)
                         connect()
       elif operation == "new_convo":
             if messageType == "contact":
                   clearTerminal()
-                  print("{} wants to begin a new contact with you!".format(str(message).capitalize()))
+                  print("{} wants to begin a new contact with you!".format(str(message[0]).capitalize()))
                   answer = ""
                   while answer.lower() != 'n' and answer.lower() != 'y':
                         answer = input("Do you want to connect? (y or n)\n")
                   if answer.lower() == 'n':
-                        return ("['{}','{}','response',['new_convo','denied']]".format(myName, sender).encode(), serverAddress)
+                        client.sendMessage("['{}','{}','response',['new_convo','denied']]".format(myName, sender).encode(), serverAddress)
                   else:
-                        return ("['{}','{}','response',['new_convo','accepted']]".format(myName, sender).encode(), serverAddress)
+                        client.sendMessage("['{}','{}','response',['new_convo','accepted']]".format(myName, sender).encode(), serverAddress)
+      elif operation == "message":
+            messagesList.append([connectionName, messageType, message[0]])
+            myScreen(True)
 
 def connect():
       global connectionName
       friendName = input("Who do you wish to connect with? Write their name!\n")
       
       while friendName == "":
-            myScreen()
+            myScreen(False)
             print ("The name can not be empty")
             friendName = input("Who do you wish to connect with? Write their name!\n")
 
       connectionName = friendName
-      myScreen()
+      myScreen(False)
       print("Waiting connection with {}...".format(connectionName))
 
       clientMessage = "['{}','server','new_convo',['contact','{}']]".format(myName, connectionName).encode()
@@ -159,8 +192,10 @@ def waitMessage():
                         running = False
 
 def waitEntry():
+      global messagesList
       while True:
-            entry = input("Want to sendo a message? (type --exit to quit)\n")
+            myScreen(True)
+            entry = input()
             if entry == "--exit":
                   print("finishing run\n")
                   stop_event.set()
@@ -168,8 +203,8 @@ def waitEntry():
             else:
                   clientMessage = "['{}','server','message',['message','{}']]".format(myName, entry).encode()
                   client.sendMessage(clientMessage)
+                  messagesList.append([myName, "message",entry])
       
-
 def closeConnection():
       #byebye message to server
       clientMessage = "['{}','server','bye_bye',['','']]".format(myName).encode()
@@ -196,7 +231,8 @@ def start():
 
       waitMessageThread.start()
       waitEntry()
-      # byebye message here
+
+      waitMessageThread.join()
       closeConnection()
 
 start()
