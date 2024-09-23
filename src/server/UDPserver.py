@@ -16,5 +16,6 @@ class UDPserver:
 
       def getClient(self):
             return self.client
-
-      # def closeSocket(self, ):
+      
+      def closeSocket(self):
+            self.serverSocket.close()
