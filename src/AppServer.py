@@ -54,7 +54,9 @@ def decodeMessage(clientMessage):
       operation = messageReceived[2]
       messageContent = messageReceived[3]
       messageType = messageContent[0]
-      message = messageContent[1]
+      message = []
+      for i in range(1,len(messageContent)):
+            message.append(messageContent[i])
       return sender, receiver, operation, messageType, message, clientAddress
 
 def sendMessageToClient(client, clientMessage):
@@ -111,12 +113,12 @@ def handleMessage(clientMessage):
             masterServer.sendMessage(response, clientAddress)
             print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
       elif operation == "new_convo":
-            contact_exists = any(message == client[0] for client in clientsList) #confere se contato requerido ja existe
+            contact_exists = any(message[0] == client[0] for client in clientsList) #confere se contato requerido ja existe
             for c in clientsList:
                   if c[0] == sender:
-                        c[3] = message #nome do contato requerido
+                        c[3] = message[0] #nome do contato requerido
             if contact_exists:
-                  contact = next((client for client in clientsList if client[0] == message), None) #busca contato requerido, caso exista
+                  contact = next((client for client in clientsList if client[0] == message[0]), None) #busca contato requerido, caso exista
                   if contact[3] == sender:
                         response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode('utf-8')
                         sendMessageToClient(client=contact[0], clientMessage=response)
@@ -132,7 +134,7 @@ def handleMessage(clientMessage):
             contact = next((client for client in clientsList if client[0] == sender), None)
             connection = next(client for client in clientsList if client[0] == contact[3])
             if messageType == "message":
-                  serverMessage = "['{}','{}','message',['message','{}']]".format(sender, contact[3], message).encode('utf-8')
+                  serverMessage = "['{}','{}','message',['message', '{}', '{}']]".format(sender, contact[3], message[0], message[1]).encode('utf-8')
                   sendMessageToClient(client=contact[3], clientMessage=serverMessage)
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
@@ -147,7 +149,7 @@ def handleMessage(clientMessage):
                   print ("{} disconnected".format(sender))
       elif operation == "response":
             if messageType == "new_convo":
-                  if message == "accepted":
+                  if message[0] == "accepted":
                         contact = next((client for client in clientsList if client[0] == message), None)
                         response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode('utf-8')
                         sendMessageToClient(client=receiver, clientMessage=response)

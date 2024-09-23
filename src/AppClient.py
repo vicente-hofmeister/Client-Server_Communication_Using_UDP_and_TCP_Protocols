@@ -9,7 +9,7 @@ from colorama import Fore, Style
 from client.UDPclient import UDPclient
 from client.TCPclient import TCPclient
 
-global client, myName, connectionName, connected, stop_event, messagesList, serverAddress
+global client, myName, connectionName, connected, stop_event, messagesList, serverAddress, messageId
 
 serverName = '127.0.0.1'
 serverPort = 12000
@@ -32,8 +32,8 @@ def printMessages():
         else:
             printedMessage = f"{LIGHT_BLUE}{msg[0]}:{Style.RESET_ALL}"
 
-        if msg[1] == "message":
-            printedMessage += f"  {msg[2]}"
+        if msg[2] == "message":
+            printedMessage += f"  {msg[3]}"
         
         print(printedMessage)
 
@@ -158,7 +158,9 @@ def manageResponse(serverMessage):
                   else:
                         client.sendMessage("['{}','{}','response',['new_convo','accepted']]".format(myName, sender).encode('utf-8'), serverAddress)
       elif operation == "message":
-            messagesList.append([connectionName, messageType, message[0]])
+            messagesList.append([connectionName, message[0], messageType, message[1]])
+            if message[0] == len(messagesList):
+                  print("\033[91mWe probably lost some message(s) along the way\033[0m")
             myScreen(True)
 
 def connect():
@@ -207,20 +209,43 @@ def waitMessage():
                         running = False
 
 def uploadFile():
+      global messageId, messagesList
       directory = 'files_to_send'
       files = os.listdir(directory)
       
       if files:
-            print("Choose a file:")
+            print("Choose a file: (--cancel to abort the operation)")
             for file in files:
                   print(f"- {file}")
+
             selection = input()
+
+            if selection == "--cancel":
+                  return
             
+            while not selection in files:
+                  selection = input("please, choose a valid file\n")
+            
+            messageId += 1
+            with open(selection, 'rb') as file:
+                  file.seek(0, os.SEEK_END)
+                  file_size = file.tell()
+                  file.seek(0)
+                  total_readed = 0
+                  more_chunks = 1
+                  while chunk := file.read(1024):
+                        offset = total_readed
+                        total_readed += len(chunk)
+                        if total_readed == file_size:
+                              more_chunks = 1
+
+                        clientMessage = "['{}','{}','message',['file','{}','{}','{}',{}]]".format(myName,connectionName,messageId,more_chunks,offset,chunk).encode('utf-8')
+                        client.send(clientMessage,serverAddress)
       else:
             print("There are no files in 'files_to_send'")
 
 def waitEntry():
-      global messagesList
+      global messagesList, messageId
       while True:
             entry = input()
             if entry == "--exit":
@@ -235,9 +260,10 @@ def waitEntry():
                   myScreen(True)
                   print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t''--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application")
             else:
-                  clientMessage = "['{}','server','message',['message','{}']]".format(myName, entry).encode('utf-8')
+                  messageId += 1
+                  clientMessage = "['{}','server','message',['message','{}','{}']]".format(myName, messageId, entry).encode('utf-8')
                   client.sendMessage(clientMessage)
-                  messagesList.append([myName, "message",entry])
+                  messagesList.append([myName, messageId,"message",entry])
                   myScreen(True)
       
 def closeConnection():
@@ -246,10 +272,11 @@ def closeConnection():
       client.closeConnection()
 
 def start():
-      global client, stop_event, connected
+      global client, stop_event, connected, messageId
       create_directories()
       client = None
       connected = False
+      messageId = 0
       stop_event = threading.Event()
       clearTerminal()
 

@@ -11,14 +11,6 @@ class TCPserver:
             self.clientSocket = None
             self.clientAddress = None
 
-      # def start(self):
-      #       while True:
-      #             self.serverSocket, self.clientAddress = self.serverSocket.accept()
-      #             sentence = connectionSocket.recv(1024).decode()
-      #             capitalizedSentence = sentence.upper()
-      #             connectionSocket.send(capitalizedSentence.encode())
-      #             connectionSocket.close()
-
       def receiveMessage(self):
             if self.clientSocket is None:
                   while True:
