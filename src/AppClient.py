@@ -7,11 +7,11 @@ import time
 from client.UDPclient import UDPclient
 from client.TCPclient import TCPclient
 
+global client, myName, connectionName, connected, stop_event, messagesList, serverAddress
+
 serverName = '127.0.0.1'
 serverPort = 12000
 serverAddress = (serverName, serverPort)
-
-global client, myName, connectionName, connected, stop_event, messagesList
 
 def clearTerminal():
     if os.name == 'nt':  # Windows
@@ -56,6 +56,7 @@ def initializeClient() :
       manageResponse(serverMessage)
 
 def decodeMessage(serverMessage):
+      global serverAddress
       messageReceived = ast.literal_eval(serverMessage[0].decode())
       sender = messageReceived[0]
       receiver = messageReceived[1]
@@ -64,13 +65,12 @@ def decodeMessage(serverMessage):
       messageType = messageContent[0]
       message = messageContent[1]
       if serverAddress != serverMessage[1]:
-            
-      serverAddress = serverMessage[1]
-      return sender, receiver, operation, messageType, message, serverAddress
+            serverAddress = serverMessage[1]
+      return sender, receiver, operation, messageType, message
 
 def manageResponse(serverMessage):
       global connected, messagesList
-      sender, receiver, operation, messageType, message, serverAddress = decodeMessage(serverMessage)
+      sender, receiver, operation, messageType, message= decodeMessage(serverMessage)
       if operation == "response":
             if messageType == "register":
                   if message == "registered":
