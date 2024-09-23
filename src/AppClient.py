@@ -11,7 +11,7 @@ serverName = '127.0.0.1'
 serverPort = 12000
 serverAddress = (serverName, serverPort)
 
-global client, myName, connectionName, connected, sender, receiver, operation, messageType, message, stop_event, messagesList
+global client, myName, connectionName, connected, stop_event, messagesList
 
 def clearTerminal():
     if os.name == 'nt':  # Windows
@@ -38,6 +38,7 @@ def myScreen(complete):
       if complete:
             printMessages()
             print("\033[33mType a new message to send: (--exit to quit)\033[0m")
+
 def getComsType():
       while True:
             server_type = input('UDP or TCP?\n').strip().lower()
@@ -55,7 +56,6 @@ def initializeClient() :
       manageResponse(serverMessage)
 
 def decodeMessage(serverMessage):
-      global sender, receiver, operation, messageType, message, serverAddress
       messageReceived = ast.literal_eval(serverMessage[0].decode())
       sender = messageReceived[0]
       receiver = messageReceived[1]
@@ -63,11 +63,14 @@ def decodeMessage(serverMessage):
       messageContent = messageReceived[3]
       messageType = messageContent[0]
       message = messageContent[1]
+      if serverAddress != serverMessage[1]:
+            
       serverAddress = serverMessage[1]
+      return sender, receiver, operation, messageType, message, serverAddress
 
 def manageResponse(serverMessage):
       global connected, messagesList
-      decodeMessage(serverMessage)
+      sender, receiver, operation, messageType, message, serverAddress = decodeMessage(serverMessage)
       if operation == "response":
             if messageType == "register":
                   if message == "registered":
