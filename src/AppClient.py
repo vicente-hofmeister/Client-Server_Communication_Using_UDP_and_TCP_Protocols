@@ -44,7 +44,17 @@ def myScreen(complete):
 
     if complete:
         printMessages()
-        print(f"{YELLOW}Type a new message to send: (--exit to quit){Style.RESET_ALL}")
+        print(f"{YELLOW}Type a new message to send: (--help to see the commands){Style.RESET_ALL}")
+
+def create_directories():
+    directories = ['downloaded_files', 'files_to_send']
+
+    for directory in directories:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Diretório '{directory}' criado.")
+        else:
+            print(f"Diretório '{directory}' já existe.")
 
 def getComsType():
       while True:
@@ -196,28 +206,48 @@ def waitMessage():
                         print("Error: {}".format(e))
                         running = False
 
+def uploadFile():
+      directory = 'files_to_send'
+      files = os.listdir(directory)
+      
+      if files:
+            print("Choose a file:")
+            for file in files:
+                  print(f"- {file}")
+            selection = input()
+            
+      else:
+            print("There are no files in 'files_to_send'")
+
 def waitEntry():
       global messagesList
       while True:
-            myScreen(True)
             entry = input()
             if entry == "--exit":
                   print("finishing run\n")
                   stop_event.set()
                   break
+            elif entry == "--upload":
+                  None
+            elif entry == "--download":
+                  None
+            elif entry == "--help":
+                  myScreen(True)
+                  print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t''--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application")
             else:
                   clientMessage = "['{}','server','message',['message','{}']]".format(myName, entry).encode('utf-8')
                   client.sendMessage(clientMessage)
                   messagesList.append([myName, "message",entry])
+                  myScreen(True)
       
 def closeConnection():
       clientMessage = "['{}','server','bye_bye',['','']]".format(myName).encode('utf-8')
       client.sendMessage(clientMessage)
-
       client.closeConnection()
 
 def start():
       global client, stop_event, connected
+      create_directories()
       client = None
       connected = False
       stop_event = threading.Event()
@@ -234,6 +264,7 @@ def start():
       waitMessageThread = threading.Thread(target=waitMessage)
 
       waitMessageThread.start()
+      myScreen(True)
       waitEntry()
 
       waitMessageThread.join()
