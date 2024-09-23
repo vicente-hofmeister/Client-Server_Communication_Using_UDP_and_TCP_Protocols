@@ -21,6 +21,7 @@ def waitEntry():
             entry = input('Press \'q\' to stop \n\n')
             if entry == 'q':
                   print('finishing run \n')
+                  # masterServer.closeSocket()
                   break
 
 def getComsType():
@@ -37,7 +38,8 @@ def runServer(server):
       while running:
             try:
                   clientMessage, clientAddress = server.receiveMessage()
-                  handleMessage(clientMessage)
+                  if not clientMessage is None:
+                        handleMessage(clientMessage)
             except socket.timeout:
                   time.sleep(0.1)
             except ConnectionResetError:
@@ -46,7 +48,7 @@ def runServer(server):
                   print(f"An error occurred: {e}")
 
 def decodeMessage(clientMessage):
-      messageReceived = ast.literal_eval(clientMessage.decode())
+      messageReceived = ast.literal_eval(clientMessage.decode('utf-8'))
       sender = messageReceived[0]
       receiver = messageReceived[1]
       operation = messageReceived[2]
@@ -59,6 +61,7 @@ def sendMessageToClient(client, clientMessage):
       for clnt in clientsList:
             if clnt[0] == client:
                   clnt[1].sendMessage(clientMessage, clnt[2])
+                  break
 
 def handleMessage(clientMessage):
       global portCounter
@@ -67,14 +70,12 @@ def handleMessage(clientMessage):
             for client in clientsList:
                   if client[0] == sender:
                         if client[2] != '':
-                              response = "['server','{}','response',['register','already_registered']]".format(sender).encode()
+                              response = "['server','{}','response',['register','already_registered']]".format(sender).encode('utf-8')
                               masterServer.sendMessage(response, clientAddress)
-                              # sendMessageToClient(client=sender, clientMessage=response)
                               return
                         else:
                               for connection in clientsList:
                                     if connection[3] == sender:
-                                          response = "['server','{}','response',['register-connection','{}']]".format(sender, connection[3]).encode()
                                           newServerSocket = None
                                           portCounter = portCounter + 1
                                           port = serverPort + portCounter
@@ -87,11 +88,12 @@ def handleMessage(clientMessage):
                                           newServerThread.start()
                                           serverThreads.append(newServerThread)
                                           clientsList.append([sender, newServerSocket, clientAddress, ''])
+                                          response = "['server','{}','response',['register-connection','{}', {}]]".format(sender, connection[3], str(port)).encode('utf-8')
+                                          masterServer.sendMessage(response, clientAddress)
+                                          # sendMessageToClient(client=sender, clientMessage=response)
                                           print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
-                                          sendMessageToClient(client=sender, clientMessage=response)
                                           return
 
-            response = "['server','{}','response',['register','registered']]".format(sender).encode()
 
             newServerSocket = None
             portCounter = portCounter + 1
@@ -105,7 +107,8 @@ def handleMessage(clientMessage):
             newServerThread.start()
             serverThreads.append(newServerThread)
             clientsList.append([sender, newServerSocket, clientAddress, ''])
-            sendMessageToClient(client=sender, clientMessage=response)
+            response = ("['server','{}','response',['register','registered', '{}']]".format(sender, str(port))).encode('utf-8')
+            masterServer.sendMessage(response, clientAddress)
             print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
       elif operation == "new_convo":
             contact_exists = any(message == client[0] for client in clientsList) #confere se contato requerido ja existe
@@ -115,21 +118,21 @@ def handleMessage(clientMessage):
             if contact_exists:
                   contact = next((client for client in clientsList if client[0] == message), None) #busca contato requerido, caso exista
                   if contact[3] == sender:
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode()
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode('utf-8')
                         sendMessageToClient(client=contact[0], clientMessage=response)
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(contact[0], sender).encode()
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(contact[0], sender).encode('utf-8')
                         sendMessageToClient(client=sender, clientMessage=response)
                         print("New convo between {} and {}\n".format(contact[0], sender))
                   elif contact[3] != '':
-                        response = "['server','{}','response',['new_convo','denied']]".format(sender).encode()
+                        response = "['server','{}','response',['new_convo','denied']]".format(sender).encode('utf-8')
             else:
-                  response = "['server','{}','response',['new_convo','wait']]".format(sender).encode()
+                  response = "['server','{}','response',['new_convo','wait']]".format(sender).encode('utf-8')
                   sendMessageToClient(client=sender, clientMessage=response)
       elif operation == "message":
             contact = next((client for client in clientsList if client[0] == sender), None)
             connection = next(client for client in clientsList if client[0] == contact[3])
             if messageType == "message":
-                  serverMessage = "['{}','{}','message',['message','{}']]".format(sender, contact[3], message).encode()
+                  serverMessage = "['{}','{}','message',['message','{}']]".format(sender, contact[3], message).encode('utf-8')
                   sendMessageToClient(client=contact[3], clientMessage=serverMessage)
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
@@ -138,7 +141,7 @@ def handleMessage(clientMessage):
                         connection = next(client for client in clientsList if client[0] == contact[3])
                         if connection[3] == contact[0]:
                               connection[3] = ""
-                              response = "['server','{}','disconnect',['disconnect','{}']]".format(connection[0], sender).encode()
+                              response = "['server','{}','disconnect',['disconnect','{}']]".format(connection[0], sender).encode('utf-8')
                               sendMessageToClient(client=connection[0], clientMessage=response)
                   contact = None
                   print ("{} disconnected".format(sender))
@@ -146,7 +149,7 @@ def handleMessage(clientMessage):
             if messageType == "new_convo":
                   if message == "accepted":
                         contact = next((client for client in clientsList if client[0] == message), None)
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode()
+                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode('utf-8')
                         sendMessageToClient(client=receiver, clientMessage=response)
 
 def start():
