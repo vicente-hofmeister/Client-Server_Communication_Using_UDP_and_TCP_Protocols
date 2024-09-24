@@ -8,7 +8,7 @@ from server.TCPserver import TCPserver
 
 serverPort = 12000
 
-global masterServer, coms_type, clientsList, clientAddress, portCounter, serverThreads
+global masterServer, coms_type, clientsList, clientAddress, portCounter, serverThreads, filesList
 
 def clearTerminal():
     if os.name == 'nt':  # Windows
@@ -66,7 +66,7 @@ def sendMessageToClient(client, clientMessage):
                   break
 
 def handleMessage(clientMessage):
-      global portCounter
+      global portCounter, filesList
       sender, receiver, operation, messageType, message, clientAddress = decodeMessage(clientMessage)
       if operation == "register":
             for client in clientsList:
@@ -136,6 +136,41 @@ def handleMessage(clientMessage):
             if messageType == "message":
                   serverMessage = "['{}','{}','message',['message', '{}', '{}']]".format(sender, contact[3], message[0], message[1]).encode('utf-8')
                   sendMessageToClient(client=contact[3], clientMessage=serverMessage)
+            elif messageType == "file":
+                  
+                  finished = False
+                  if not bool(message[1]):
+                        finished = True
+                  
+                  if int(message[2]) == 0:
+                        chunk = message[3]
+                        newFile = [sender, receiver, message[0], finished, chunk]
+                        filesList.append(newFile)
+                        print("new file being received from {}".format(sender))
+                  else:
+                        # Encontra a file correspondente no filesList
+                        foundFile = None
+                        for file in filesList:
+                              if file[0] == sender and file[1] == receiver and file[2] == message[0]:
+                                    foundFile = file
+                                    break
+                        if foundFile:
+
+                              # Verifica se o offset (message[2]) é igual ao tamanho do chunk atual (foundFile[4])
+                              if int(message[2]) == len(foundFile[4]):
+                                    print("complementing file from {}".format(sender))
+
+                                    # Adiciona o novo chunk ao arquivo existente
+                                    foundFile[4] += message[3]  # Concatenar o novo chunk ao arquivo
+                                    # Atualiza o estado de 'finished' se message[1] for 0 (ou outro critério de finalização)
+                                    if not bool(message[1]):
+                                          foundFile[3] = True
+                              else:
+                                    # Trate o erro ou ignore se o offset não for igual ao tamanho do chunk atual
+                                    print(f"Offset mismatch: expected {len(foundFile[4])}, but got {message[2]}")
+                        else:
+                              # Caso não encontre o arquivo correspondente, trate o erro ou crie um novo
+                              print(f"File from {sender} to {receiver} not found in filesList.")
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
             if contact != None:
@@ -155,8 +190,9 @@ def handleMessage(clientMessage):
                         sendMessageToClient(client=receiver, clientMessage=response)
 
 def start():
-      global masterServer, clientsList, coms_type, portCounter, serverThreads
+      global masterServer, clientsList, coms_type, portCounter, serverThreads, filesList
       clientsList = []
+      filesList = []
       serverThreads = []
       portCounter = 0
       clearTerminal()

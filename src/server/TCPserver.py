@@ -3,11 +3,14 @@ from socket import *
 class TCPserver:
       def __init__(self, serverPort, client):
             self.serverPort = serverPort
+            self.client = client
             self.serverSocket = socket(AF_INET,SOCK_STREAM)
             self.serverSocket.bind(('',self.serverPort))
             self.serverSocket.settimeout(0.1)
-            self.serverSocket.listen(1)
-            self.client = client
+            listenTo = 1
+            if client == "master":
+                  listenTo = 10
+            self.serverSocket.listen(listenTo)
             self.clientSocket = None
             self.clientAddress = None
 

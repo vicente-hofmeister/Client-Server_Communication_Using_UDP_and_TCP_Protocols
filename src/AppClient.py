@@ -227,7 +227,9 @@ def uploadFile():
                   selection = input("please, choose a valid file\n")
             
             messageId += 1
-            with open(selection, 'rb') as file:
+            file_path = os.path.join(directory, selection)
+
+            with open(file_path, 'rb') as file:
                   file.seek(0, os.SEEK_END)
                   file_size = file.tell()
                   file.seek(0)
@@ -238,9 +240,10 @@ def uploadFile():
                         total_readed += len(chunk)
                         if total_readed == file_size:
                               more_chunks = 1
-
-                        clientMessage = "['{}','{}','message',['file','{}','{}','{}',{}]]".format(myName,connectionName,messageId,more_chunks,offset,chunk).encode('utf-8')
-                        client.send(clientMessage,serverAddress)
+                        
+                        # sends [sender, receiver, opetation(message), [messageType(file), messageId, more_chunks, offset, chunk]]
+                        clientMessage = "['{}','{}','message',['file',{},{},{},{}]]".format(myName,connectionName,messageId,more_chunks,offset,chunk).encode('utf-8')
+                        client.sendMessage(clientMessage)
       else:
             print("There are no files in 'files_to_send'")
 
@@ -253,7 +256,7 @@ def waitEntry():
                   stop_event.set()
                   break
             elif entry == "--upload":
-                  None
+                  uploadFile()
             elif entry == "--download":
                   None
             elif entry == "--help":
@@ -261,7 +264,7 @@ def waitEntry():
                   print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t''--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application")
             else:
                   messageId += 1
-                  clientMessage = "['{}','server','message',['message','{}','{}']]".format(myName, messageId, entry).encode('utf-8')
+                  clientMessage = "['{}','{}','message',['message','{}','{}']]".format(myName, connectionName, messageId, entry).encode('utf-8')
                   client.sendMessage(clientMessage)
                   messagesList.append([myName, messageId,"message",entry])
                   myScreen(True)
