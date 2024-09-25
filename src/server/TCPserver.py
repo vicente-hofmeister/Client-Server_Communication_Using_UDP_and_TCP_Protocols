@@ -3,21 +3,16 @@ from socket import *
 class TCPserver:
       def __init__(self, serverPort, client):
             self.serverPort = serverPort
+            self.client = client
             self.serverSocket = socket(AF_INET,SOCK_STREAM)
             self.serverSocket.bind(('',self.serverPort))
-            self.serverSocket.settimeout(0.1)
-            self.serverSocket.listen(1)
-            self.client = client
+            self.serverSocket.settimeout(0.5)
+            listenTo = 1
+            if client == "master":
+                  listenTo = 10
+            self.serverSocket.listen(listenTo)
             self.clientSocket = None
             self.clientAddress = None
-
-      # def start(self):
-      #       while True:
-      #             self.serverSocket, self.clientAddress = self.serverSocket.accept()
-      #             sentence = connectionSocket.recv(1024).decode()
-      #             capitalizedSentence = sentence.upper()
-      #             connectionSocket.send(capitalizedSentence.encode())
-      #             connectionSocket.close()
 
       def receiveMessage(self):
             if self.clientSocket is None:
@@ -35,7 +30,7 @@ class TCPserver:
                   if not clientMessage:
                         self.clientSocket.close()
                         self.clientSocket = None
-                        return None, None 
+                        return None, None
                   return clientMessage, self.clientAddress
             except Exception as e:
                   print(f"Erro ao receber mensagem: {e}")
