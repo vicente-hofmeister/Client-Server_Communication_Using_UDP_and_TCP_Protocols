@@ -45,12 +45,17 @@ def getComsType():
 
 def runServer(server):
       global clientAddress
+      buffer = b""
       running = True
       while running:
             try:
                   clientMessage, clientAddress = server.receiveMessage()
-                  if not clientMessage is None:
-                        handleMessage(clientMessage)
+                  if clientMessage is not None:
+                        buffer += clientMessage
+                        while b"<END>" in buffer:  # Verifica se há uma mensagem completa (delimitada)
+                              # Divide o buffer pela primeira ocorrência de <END>
+                              message, buffer = buffer.split(b"<END>", 1)  
+                              handleMessage(message) # Passa a mensagem completa para ser processada
             except socket.timeout:
                   time.sleep(0.1)
             except ConnectionResetError:
@@ -59,16 +64,24 @@ def runServer(server):
                   print(f"An error occurred: {e}")
 
 def decodeMessage(clientMessage):
-      messageReceived = ast.literal_eval(clientMessage.decode('utf-8'))
-      sender = messageReceived[0]
-      receiver = messageReceived[1]
-      operation = messageReceived[2]
-      messageContent = messageReceived[3]
-      messageType = messageContent[0]
-      message = []
-      for i in range(1,len(messageContent)):
-            message.append(messageContent[i])
-      return sender, receiver, operation, messageType, message, clientAddress
+      try:
+            clientMessage = clientMessage.rstrip(b"<END>")
+            messageReceived = ast.literal_eval(clientMessage.decode('utf-8'))
+            sender = messageReceived[0]
+            receiver = messageReceived[1]
+            operation = messageReceived[2]
+            messageContent = messageReceived[3]
+            messageType = messageContent[0]
+            message = []
+            for i in range(1,len(messageContent)):
+                  message.append(messageContent[i])
+            return sender, receiver, operation, messageType, message, clientAddress
+      except SyntaxError as e:
+            print(f"Syntax error: {e}")
+      except ValueError as e:
+            print(f"Value error: {e}")
+      except Exception as e:
+            print(f"Error: {e}")
 
 def sendMessageToClient(client, clientMessage):
       for clnt in clientsList:
@@ -83,7 +96,7 @@ def handleMessage(clientMessage):
             for client in clientsList:
                   if client[0] == sender:
                         if client[2] != '':
-                              response = "['server','{}','response',['register','already_registered']]".format(sender).encode('utf-8')
+                              response = "['server','{}','response',['register','already_registered']]<END>".format(sender).encode('utf-8')
                               masterServer.sendMessage(response, clientAddress)
                               return
                         else:
@@ -101,12 +114,11 @@ def handleMessage(clientMessage):
                                           newServerThread.start()
                                           serverThreads.append(newServerThread)
                                           clientsList.append([sender, newServerSocket, clientAddress, ''])
-                                          response = "['server','{}','response',['register-connection','{}', {}]]".format(sender, connection[3], str(port)).encode('utf-8')
+                                          response = "['server','{}','response',['register-connection','{}', {}]]<END>".format(sender, connection[3], str(port)).encode('utf-8')
                                           masterServer.sendMessage(response, clientAddress)
                                           # sendMessageToClient(client=sender, clientMessage=response)
                                           print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
                                           return
-
 
             newServerSocket = None
             portCounter = portCounter + 1
@@ -120,7 +132,7 @@ def handleMessage(clientMessage):
             newServerThread.start()
             serverThreads.append(newServerThread)
             clientsList.append([sender, newServerSocket, clientAddress, ''])
-            response = ("['server','{}','response',['register','registered', '{}']]".format(sender, str(port))).encode('utf-8')
+            response = ("['server','{}','response',['register','registered', '{}']]<END>".format(sender, str(port))).encode('utf-8')
             masterServer.sendMessage(response, clientAddress)
             print ("Registered: {}, {}\n".format(sender, str(clientAddress)))
       elif operation == "new_convo":
@@ -131,21 +143,21 @@ def handleMessage(clientMessage):
             if contact_exists:
                   contact = next((client for client in clientsList if client[0] == message[0]), None) #busca contato requerido, caso exista
                   if contact[3] == sender:
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, contact[0]).encode('utf-8')
+                        response = "['{}','{}','response',['new_convo','accepted']]<END>".format(sender, contact[0]).encode('utf-8')
                         sendMessageToClient(client=contact[0], clientMessage=response)
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(contact[0], sender).encode('utf-8')
+                        response = "['{}','{}','response',['new_convo','accepted']]<END>".format(contact[0], sender).encode('utf-8')
                         sendMessageToClient(client=sender, clientMessage=response)
                         print("New convo between {} and {}\n".format(contact[0], sender))
                   elif contact[3] != '':
-                        response = "['server','{}','response',['new_convo','denied']]".format(sender).encode('utf-8')
+                        response = "['server','{}','response',['new_convo','denied']]<END>".format(sender).encode('utf-8')
             else:
-                  response = "['server','{}','response',['new_convo','wait']]".format(sender).encode('utf-8')
+                  response = "['server','{}','response',['new_convo','wait']]<END>".format(sender).encode('utf-8')
                   sendMessageToClient(client=sender, clientMessage=response)
       elif operation == "message":
             contact = next((client for client in clientsList if client[0] == sender), None)
             connection = next(client for client in clientsList if client[0] == contact[3])
             if messageType == "message":
-                  serverMessage = "['{}','{}','message',['message', '{}', '{}']]".format(sender, contact[3], message[0], message[1]).encode('utf-8')
+                  serverMessage = "['{}','{}','message',['message', '{}', '{}']]<END>".format(sender, contact[3], message[0], message[1]).encode('utf-8')
                   sendMessageToClient(client=contact[3], clientMessage=serverMessage)
             elif messageType == "file":
                   messageId = message[0]
@@ -170,22 +182,23 @@ def handleMessage(clientMessage):
                                     break
                         if foundFile:
                               if int(offset) == len(foundFile[5]):
-                                    print("complementing file from {}".format(sender))
-
                                     foundFile[5] += chunk  # Concatenar o novo chunk ao arquivo
                                     foundFile[6] = int(offset) + len(chunk)  # Atualiza o offset
                                     if finished: # se nao houver mais chunks
                                           foundFile[3] = True
-                                          print("File complete!")
                                           saveFiles(fileData=foundFile[5], fileName=fileName)
+                                          serverMessage = "['server','{}','response',['file', '{}', 'received']]<END>".format(sender, messageId).encode('utf-8')
+                                          sendMessageToClient(client=sender, clientMessage=serverMessage)
                               else:
                                     # Trate o erro ou ignore se o offset não for igual ao tamanho do chunk atual
                                     print(f"Offset mismatch: expected {len(foundFile[5])}, but got {offset}")
+                                    serverMessage = "['server','{}','response',['file', '{}', 'error']]<END>".format(sender, messageId).encode('utf-8')
+                                    sendMessageToClient(client=sender, clientMessage=serverMessage)
                         else:
                               # Caso não encontre o arquivo correspondente, trate o erro ou crie um novo
                               print("Previous packages from {}'s file no found. Package loss!!".format(sender))
-                  
-
+                              serverMessage = "['server','{}','response',['file', '{}', 'error']]<END>".format(sender, messageId).encode('utf-8')
+                              sendMessageToClient(client=sender, clientMessage=serverMessage)
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
             if contact != None:
@@ -193,7 +206,7 @@ def handleMessage(clientMessage):
                         connection = next(client for client in clientsList if client[0] == contact[3])
                         if connection[3] == contact[0]:
                               connection[3] = ""
-                              response = "['server','{}','disconnect',['disconnect','{}']]".format(connection[0], sender).encode('utf-8')
+                              response = "['server','{}','disconnect',['disconnect','{}']]<END>".format(connection[0], sender).encode('utf-8')
                               sendMessageToClient(client=connection[0], clientMessage=response)
                   contact = None
                   print ("{} disconnected".format(sender))
@@ -201,7 +214,7 @@ def handleMessage(clientMessage):
             if messageType == "new_convo":
                   if message[0] == "accepted":
                         contact = next((client for client in clientsList if client[0] == message), None)
-                        response = "['{}','{}','response',['new_convo','accepted']]".format(sender, receiver).encode('utf-8')
+                        response = "['{}','{}','response',['new_convo','accepted']]<END>".format(sender, receiver).encode('utf-8')
                         sendMessageToClient(client=receiver, clientMessage=response)
 
 def start():

@@ -10,7 +10,7 @@ class TCPclient:
             self.serverAddress = newAddress
             self.clientSocket.close()
             self.clientSocket = socket(AF_INET, SOCK_STREAM)
-            self.clientSocket.settimeout(0.1)
+            self.clientSocket.settimeout(0.5)
             self.clientSocket.connect(self.serverAddress)
 
       def sendMessage(self, message):

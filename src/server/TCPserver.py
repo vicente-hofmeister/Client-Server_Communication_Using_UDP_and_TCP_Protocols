@@ -6,7 +6,7 @@ class TCPserver:
             self.client = client
             self.serverSocket = socket(AF_INET,SOCK_STREAM)
             self.serverSocket.bind(('',self.serverPort))
-            self.serverSocket.settimeout(0.1)
+            self.serverSocket.settimeout(0.5)
             listenTo = 1
             if client == "master":
                   listenTo = 10
@@ -30,7 +30,7 @@ class TCPserver:
                   if not clientMessage:
                         self.clientSocket.close()
                         self.clientSocket = None
-                        return None, None 
+                        return None, None
                   return clientMessage, self.clientAddress
             except Exception as e:
                   print(f"Erro ao receber mensagem: {e}")
