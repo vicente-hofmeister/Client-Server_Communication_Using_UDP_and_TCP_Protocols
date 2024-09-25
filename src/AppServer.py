@@ -184,11 +184,11 @@ def handleMessage(clientMessage):
                                     foundFile[5] += chunk  # Concatenar o novo chunk ao arquivo
                                     foundFile[6] = int(offset) + len(chunk)  # Atualiza o offset
                                     if finished: # se nao houver mais chunks
-                                          foundFile[3] = True
-                                          saveFiles(fileData=foundFile[5], fileName=fileName)
+                                          foundFile[4] = True
+                                          saveFiles(fileData=foundFile[5], fileName=foundFile[3])
                                           serverMessage = "['server','{}','response',['file', '{}', 'received']]<END>".format(sender, messageId).encode('utf-8')
                                           sendMessageToClient(client=sender, clientMessage=serverMessage)
-                                          serverMessage = "['{}','{}','message',['file', '{}', '{}']]<END>".format(sender, receiver, messageId, fileName).encode('utf-8')
+                                          serverMessage = "['{}','{}','message',['file', '{}', '{}']]<END>".format(sender, receiver, messageId, foundFile[3]).encode('utf-8')
                                           sendMessageToClient(client=receiver, clientMessage=serverMessage)
                               else:
                                     # Trate o erro ou ignore se o offset não for igual ao tamanho do chunk atual
@@ -217,7 +217,14 @@ def handleMessage(clientMessage):
                         contact = next((client for client in clientsList if client[0] == message), None)
                         response = "['{}','{}','response',['new_convo','accepted']]<END>".format(sender, receiver).encode('utf-8')
                         sendMessageToClient(client=receiver, clientMessage=response)
-
+      elif operation == "download":
+            if messageType == "list":
+                  titles = [f"'{file[2]}-{file[3]}'" for file in filesList if file[0] == message[0] and file[1] == sender]
+                  # Junta os títulos em uma string separada por vírgulas
+                  titles_str = ', '.join(titles)
+                  # Formata a mensagem no formato desejado
+                  serverMessage = "['server','{}','response',['download-list', {}]]<END>".format(sender, titles_str).encode('utf-8')
+                  sendMessageToClient(client=sender, clientMessage=serverMessage)
 def start():
       global masterServer, clientsList, coms_type, portCounter, serverThreads, filesList
       clientsList = []

@@ -20,7 +20,6 @@ LIGHT_GRAY = '\033[90m'
 LIGHT_RED = '\033[91m'
 LIGHT_GREEN = '\033[92m'
 
-
 def clearTerminal():
     if os.name == 'nt':  # Windows
         os.system('cls')
@@ -175,6 +174,21 @@ def manageResponse(serverMessage):
                               msg[4] = message[1]
                               myScreen(True)
                               break
+            elif messageType == "download-list":
+                  print("Choose a file: (--cancel to abort the operation)")
+                  for file in message:
+                        print(f"- {file}")
+
+                  fileName = input()
+
+                  if fileName == "--cancel":
+                        return
+                  
+                  while not fileName in message or fileName == "--cancel":
+                        if fileName == "--cancel":
+                              return
+                        fileName = input("please, choose a valid file\n")
+
       elif operation == "new_convo":
             if messageType == "contact":
                   clearTerminal()
@@ -196,8 +210,6 @@ def manageResponse(serverMessage):
                   state = "not-downloaded"
                   messagesList.append([connectionName, message[0], messageType, message[1], state])
                   myScreen(True)
-
-
 
 def connect():
       global connectionName
@@ -230,7 +242,6 @@ def receiveSingleMessage():
                   running = False
 
 def waitMessage():
-
       buffer = b""
       running = True
       while running:
@@ -277,6 +288,7 @@ def uploadFile():
             # stores message of file sent. State gets updated as received or not by the server
             state = "sent"
             messagesList.append([myName, messageId,"file",fileName,state])
+            myScreen(True)
 
             with open(file_path, 'rb') as file:
                   file.seek(0, os.SEEK_END)
@@ -284,7 +296,6 @@ def uploadFile():
                   file.seek(0)
                   total_readed = 0
                   more_chunks = 1
-                  
                   while chunk := file.read(1024):
                         offset = total_readed
                         total_readed += len(chunk)
@@ -297,19 +308,26 @@ def uploadFile():
             print("There are no files in 'files_to_send'")
             time.sleep(3)
 
+def downloadFile():
+      clientMessage = "['{}','server','download',['list','{}']]<END>".format(myName, connectionName, ).encode('utf-8')
+      client.sendMessage(clientMessage)
+      serverMessage = client.receiveMessage()
+      manageResponse(serverMessage=serverMessage)
+
 def waitEntry():
       global messagesList, messageId
       while True:
             entry = input()
-            if entry == "--exit":
+            if entry == "":
+                  myScreen(True)
+            elif entry == "--exit":
                   print("finishing run\n")
                   stop_event.set()
                   break
             elif entry == "--upload":
                   uploadFile()
-                  myScreen(True)
             elif entry == "--download":
-                  myScreen(True)
+                  downloadFile()
             elif entry == "--help":
                   myScreen(True)
                   print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t'--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application\n\t'--cancel' to close the help instructions")
@@ -353,6 +371,6 @@ def start():
             waitMessageThread.join()
             closeConnection()
       except Exception as e:
-            print("OPA! achei {}".format(e))
+            print("Error: {}".format(e))
 
 start()
