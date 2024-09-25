@@ -168,12 +168,11 @@ def handleMessage(clientMessage):
                   finished = False
                   if not more_chunks:
                         finished = True
-                  
+
                   if int(offset) == 0:
                         newFile = [sender, receiver, messageId, fileName, finished, chunk, 0]
                         filesList.append(newFile)
                         print("new file being received from {}".format(sender))
-
                   else:
                         foundFile = None
                         for file in filesList:
@@ -189,6 +188,8 @@ def handleMessage(clientMessage):
                                           saveFiles(fileData=foundFile[5], fileName=fileName)
                                           serverMessage = "['server','{}','response',['file', '{}', 'received']]<END>".format(sender, messageId).encode('utf-8')
                                           sendMessageToClient(client=sender, clientMessage=serverMessage)
+                                          serverMessage = "['{}','{}','message',['file', '{}', '{}']]<END>".format(sender, receiver, messageId, fileName).encode('utf-8')
+                                          sendMessageToClient(client=receiver, clientMessage=serverMessage)
                               else:
                                     # Trate o erro ou ignore se o offset não for igual ao tamanho do chunk atual
                                     print(f"Offset mismatch: expected {len(foundFile[5])}, but got {offset}")

@@ -44,7 +44,11 @@ def printMessages():
                   printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]    {msg[4]}{Style.RESET_ALL}"
             elif msg[4] == "error":
                   printedMessage += f"  {LIGHT_RED}[{msg[3].upper()}]    {msg[4]}{Style.RESET_ALL}"
-        
+            elif msg[4] == "not-downloaded":
+                  printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]   {msg[4]}{Style.RESET_ALL}"
+            elif msg[4] == "downloaded":
+                  printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]    {msg[4]}{Style.RESET_ALL}"
+
       print(printedMessage)
 
 def myScreen(complete):
@@ -183,10 +187,17 @@ def manageResponse(serverMessage):
                   else:
                         client.sendMessage("['{}','{}','response',['new_convo','accepted']]<END>".format(myName, sender).encode('utf-8'), serverAddress)
       elif operation == "message":
-            messagesList.append([connectionName, message[0], messageType, message[1]])
-            if message[0] == len(messagesList):
-                  print("\033[91mWe probably lost some message(s) along the way\033[0m")
-            myScreen(True)
+            if messageType == "message":
+                  messagesList.append([connectionName, message[0], messageType, message[1]])
+                  if message[0] == len(messagesList):
+                        print("\033[91mWe probably lost some message(s) along the way\033[0m")
+                  myScreen(True)
+            elif messageType == "file":
+                  state = "not-downloaded"
+                  messagesList.append([connectionName, message[0], messageType, message[1], state])
+                  myScreen(True)
+
+
 
 def connect():
       global connectionName
