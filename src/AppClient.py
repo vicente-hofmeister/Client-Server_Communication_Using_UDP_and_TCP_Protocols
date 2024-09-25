@@ -46,7 +46,7 @@ def myScreen(complete):
         printMessages()
         print(f"{YELLOW}Type a new message to send: (--help to see the commands){Style.RESET_ALL}")
 
-def create_directories():
+def createDirectories():
     directories = ['downloaded_files', 'files_to_send']
 
     for directory in directories:
@@ -221,9 +221,13 @@ def uploadFile():
             selection = input()
 
             if selection == "--cancel":
+                  myScreen(True)
                   return
             
-            while not selection in files:
+            while not selection in files or selection == "--cancel":
+                  if selection == "--cancel":
+                        myScreen(True)
+                        return
                   selection = input("please, choose a valid file\n")
             
             messageId += 1
@@ -232,17 +236,19 @@ def uploadFile():
             with open(file_path, 'rb') as file:
                   file.seek(0, os.SEEK_END)
                   file_size = file.tell()
+                  print("file size: {}".format(file_size))
                   file.seek(0)
                   total_readed = 0
                   more_chunks = 1
+
                   while chunk := file.read(1024):
                         offset = total_readed
                         total_readed += len(chunk)
                         if total_readed == file_size:
-                              more_chunks = 1
-                        
+                              more_chunks = 0
                         # sends [sender, receiver, opetation(message), [messageType(file), messageId, more_chunks, offset, chunk]]
-                        clientMessage = "['{}','{}','message',['file',{},{},{},{}]]".format(myName,connectionName,messageId,more_chunks,offset,chunk).encode('utf-8')
+                        clientMessage = "['{}','{}','message',['file','{}','{}',{},'{}',{}]]".format(myName,connectionName,messageId,selection,more_chunks,offset,chunk).encode('utf-8')
+
                         client.sendMessage(clientMessage)
       else:
             print("There are no files in 'files_to_send'")
@@ -261,7 +267,7 @@ def waitEntry():
                   None
             elif entry == "--help":
                   myScreen(True)
-                  print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t''--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application")
+                  print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t'--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application")
             else:
                   messageId += 1
                   clientMessage = "['{}','{}','message',['message','{}','{}']]".format(myName, connectionName, messageId, entry).encode('utf-8')
@@ -276,7 +282,7 @@ def closeConnection():
 
 def start():
       global client, stop_event, connected, messageId
-      create_directories()
+      createDirectories()
       client = None
       connected = False
       messageId = 0

@@ -16,6 +16,17 @@ def clearTerminal():
     else:  # Linux or macOS
         os.system('clear')
 
+def createDirectory():
+      directory = "server_files"
+      if not os.path.exists(directory):
+            os.makedirs(directory)
+
+def saveFiles(fileData, fileName):
+      filePath = os.path.join('server_files', fileName)
+      with open(filePath, 'wb') as f:
+            f.write(fileData)
+      print(f"File saved at: {filePath}") 
+
 def waitEntry():
       while True:
             entry = input('Press \'q\' to stop \n\n')
@@ -137,40 +148,44 @@ def handleMessage(clientMessage):
                   serverMessage = "['{}','{}','message',['message', '{}', '{}']]".format(sender, contact[3], message[0], message[1]).encode('utf-8')
                   sendMessageToClient(client=contact[3], clientMessage=serverMessage)
             elif messageType == "file":
-                  
+                  messageId = message[0]
+                  fileName = message[1]
+                  more_chunks = message[2]
+                  offset = message[3]
+                  chunk = message[4]
                   finished = False
-                  if not bool(message[1]):
+                  if not more_chunks:
                         finished = True
                   
-                  if int(message[2]) == 0:
-                        chunk = message[3]
-                        newFile = [sender, receiver, message[0], finished, chunk]
+                  if int(offset) == 0:
+                        newFile = [sender, receiver, messageId, fileName, finished, chunk, 0]
                         filesList.append(newFile)
                         print("new file being received from {}".format(sender))
+
                   else:
-                        # Encontra a file correspondente no filesList
                         foundFile = None
                         for file in filesList:
-                              if file[0] == sender and file[1] == receiver and file[2] == message[0]:
+                              if file[0] == sender and file[1] == receiver and file[2] == messageId:
                                     foundFile = file
                                     break
                         if foundFile:
-
-                              # Verifica se o offset (message[2]) é igual ao tamanho do chunk atual (foundFile[4])
-                              if int(message[2]) == len(foundFile[4]):
+                              if int(offset) == len(foundFile[5]):
                                     print("complementing file from {}".format(sender))
 
-                                    # Adiciona o novo chunk ao arquivo existente
-                                    foundFile[4] += message[3]  # Concatenar o novo chunk ao arquivo
-                                    # Atualiza o estado de 'finished' se message[1] for 0 (ou outro critério de finalização)
-                                    if not bool(message[1]):
+                                    foundFile[5] += chunk  # Concatenar o novo chunk ao arquivo
+                                    foundFile[6] = int(offset) + len(chunk)  # Atualiza o offset
+                                    if finished: # se nao houver mais chunks
                                           foundFile[3] = True
+                                          print("File complete!")
+                                          saveFiles(fileData=foundFile[5], fileName=fileName)
                               else:
                                     # Trate o erro ou ignore se o offset não for igual ao tamanho do chunk atual
-                                    print(f"Offset mismatch: expected {len(foundFile[4])}, but got {message[2]}")
+                                    print(f"Offset mismatch: expected {len(foundFile[5])}, but got {offset}")
                         else:
                               # Caso não encontre o arquivo correspondente, trate o erro ou crie um novo
-                              print(f"File from {sender} to {receiver} not found in filesList.")
+                              print("Previous packages from {}'s file no found. Package loss!!".format(sender))
+                  
+
       elif operation == "bye_bye":
             contact = next((client for client in clientsList if client[0] == sender), None)
             if contact != None:
@@ -195,6 +210,7 @@ def start():
       filesList = []
       serverThreads = []
       portCounter = 0
+      createDirectory()
       clearTerminal()
       coms_type = getComsType()
       masterServer = None
