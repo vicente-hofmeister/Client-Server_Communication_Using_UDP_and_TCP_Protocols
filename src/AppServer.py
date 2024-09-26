@@ -168,12 +168,11 @@ def handleMessage(clientMessage):
                   finished = False
                   if not more_chunks:
                         finished = True
-                  
+
                   if int(offset) == 0:
                         newFile = [sender, receiver, messageId, fileName, finished, chunk, 0]
                         filesList.append(newFile)
                         print("new file being received from {}".format(sender))
-
                   else:
                         foundFile = None
                         for file in filesList:
@@ -185,10 +184,12 @@ def handleMessage(clientMessage):
                                     foundFile[5] += chunk  # Concatenar o novo chunk ao arquivo
                                     foundFile[6] = int(offset) + len(chunk)  # Atualiza o offset
                                     if finished: # se nao houver mais chunks
-                                          foundFile[3] = True
-                                          saveFiles(fileData=foundFile[5], fileName=fileName)
+                                          foundFile[4] = True
+                                          saveFiles(fileData=foundFile[5], fileName=foundFile[3])
                                           serverMessage = "['server','{}','response',['file', '{}', 'received']]<END>".format(sender, messageId).encode('utf-8')
                                           sendMessageToClient(client=sender, clientMessage=serverMessage)
+                                          serverMessage = "['{}','{}','message',['file', '{}', '{}']]<END>".format(sender, receiver, messageId, foundFile[3]).encode('utf-8')
+                                          sendMessageToClient(client=receiver, clientMessage=serverMessage)
                               else:
                                     # Trate o erro ou ignore se o offset não for igual ao tamanho do chunk atual
                                     print(f"Offset mismatch: expected {len(foundFile[5])}, but got {offset}")
@@ -216,6 +217,35 @@ def handleMessage(clientMessage):
                         contact = next((client for client in clientsList if client[0] == message), None)
                         response = "['{}','{}','response',['new_convo','accepted']]<END>".format(sender, receiver).encode('utf-8')
                         sendMessageToClient(client=receiver, clientMessage=response)
+      elif operation == "download":
+            if messageType == "list":
+                  titles = [f"'{file[2]}-{file[3]}'" for file in filesList if file[0] == message[0] and file[1] == sender]
+                  # Junta os títulos em uma string separada por vírgulas
+                  titles_str = ', '.join(titles)
+                  # Formata a mensagem no formato desejado
+                  serverMessage = "['server','{}','response',['download-list', {}]]<END>".format(sender, titles_str).encode('utf-8')
+                  sendMessageToClient(client=sender, clientMessage=serverMessage)
+            elif messageType == "file":
+                  fileId, fileTitle = message[1].split('-',1)
+                  origin = message[0]
+                  destiny = sender
+
+                  matching_file = next((file for file in filesList if file[0] == origin and file[1] == destiny and file[2] == fileId and file[3] == fileTitle), None)
+                  
+                  if matching_file:
+                        file_data = matching_file[5]
+                        file_size = matching_file[6]
+                        total_readed = 0
+                        chunk_size = 1024
+
+                        while total_readed < file_size:
+                              chunk = file_data[total_readed:total_readed + chunk_size]
+                              offset = total_readed
+                              total_readed += len(chunk)
+                              more_chunks = 1 if total_readed < file_size else 0
+                              
+                              serverMessage = "['server','{}','response',['download','{}','{}',{},'{}',{}]]<END>".format(sender,fileId,fileTitle,more_chunks,offset,chunk).encode('utf-8')
+                              sendMessageToClient(client=sender, clientMessage=serverMessage)
 
 def start():
       global masterServer, clientsList, coms_type, portCounter, serverThreads, filesList

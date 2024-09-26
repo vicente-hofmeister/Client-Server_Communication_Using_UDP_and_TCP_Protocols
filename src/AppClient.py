@@ -8,7 +8,7 @@ from colorama import Fore, Style
 from client.UDPclient import UDPclient
 from client.TCPclient import TCPclient
 
-global client, myName, connectionName, connected, stop_event, messagesList, serverAddress, messageId
+global client, myName, connectionName, connected, stop_event, messagesList, serverAddress, messageId, filesList
 
 serverName = '127.0.0.1'
 serverPort = 12000
@@ -19,7 +19,6 @@ YELLOW = '\033[93m'
 LIGHT_GRAY = '\033[90m'
 LIGHT_RED = '\033[91m'
 LIGHT_GREEN = '\033[92m'
-
 
 def clearTerminal():
     if os.name == 'nt':  # Windows
@@ -39,12 +38,16 @@ def printMessages():
             printedMessage += f"  {msg[3]}"
       elif msg[2] == "file":
             if msg[4] == "sent":
-                  printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]   {msg[4]}{Style.RESET_ALL}"
+                  printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]"
             elif msg[4] == "received":
-                  printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]    {msg[4]}{Style.RESET_ALL}"
+                  printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]"
             elif msg[4] == "error":
-                  printedMessage += f"  {LIGHT_RED}[{msg[3].upper()}]    {msg[4]}{Style.RESET_ALL}"
-        
+                  printedMessage += f"  {LIGHT_RED}[{msg[3].upper()}]"
+            elif msg[4] == "not-downloaded":
+                  printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]"
+            elif msg[4] == "downloaded":
+                  printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]"
+
       print(printedMessage)
 
 def myScreen(complete):
@@ -110,8 +113,9 @@ def decodeMessage(serverMessage):
             print(f"Error: {e}")
 
 def manageResponse(serverMessage):
-      global connected, messagesList, serverAddress
+      global connected, messagesList, serverAddress, filesList
       sender, receiver, operation, messageType, message= decodeMessage(serverMessage)
+
       if operation == "response":
             if messageType == "register":
                   if message[0] == "registered":
@@ -171,6 +175,52 @@ def manageResponse(serverMessage):
                               msg[4] = message[1]
                               myScreen(True)
                               break
+            elif messageType == "download-list":
+                  print("Choose a file: (--cancel to abort the operation)")
+                  for file in message:
+                        print(f"- {file}")
+
+                  fileName = input()
+
+                  while not fileName in message or fileName == "--cancel":
+                        if fileName == "--cancel":
+                              return
+                        fileName = input("please, choose a valid file\n")
+                  
+                  clientMessage = "['{}','server','download',['file','{}','{}']]<END>".format(myName, connectionName, fileName).encode('utf-8')
+                  client.sendMessage(clientMessage)
+            elif messageType == "download":
+                  fileId = message[0]
+                  fileName = message[1]
+                  more_chunks = message[2]
+                  offset = message[3]
+                  chunk = message[4]
+                  finished = False
+                  if not more_chunks:
+                        finished = True
+                  
+                  if int(offset) == 0:
+                        newFile = [sender, receiver, messageId, fileName, finished, chunk, 0]
+                        filesList.append(newFile)
+                  else:
+                        foundFile = next((file for file in filesList if file[2] == messageId), None)
+                        if foundFile:
+                              if int(offset) == len(foundFile[5]):
+                                    foundFile[5] += chunk  # Concatenar o novo chunk ao arquivo
+                                    foundFile[6] = int(offset) + len(chunk)  # Atualiza o offset
+                                    if finished: # se nao houver mais chunks
+                                          foundFile[4] = True
+                                          saveFiles(fileData=foundFile[5], fileName=foundFile[3])
+                                          matching_message = next((msg for msg in messagesList if msg[0] == connectionName and msg[1] == fileId and msg[2] == "file" and msg[3] == fileName), None)
+                                          matching_message[4] = "downloaded"
+                                          filesList.remove(foundFile)
+                              else:
+                                    matching_message = next((msg for msg in messagesList if msg[0] == connectionName and msg[1] == fileId and msg[2] == "file" and msg[3] == fileName), None)
+                                    matching_message[4] = "error"
+                                    filesList.remove(foundFile)
+                        else:
+                              matching_message = next((msg for msg in messagesList if msg[0] == connectionName and msg[1] == fileId and msg[2] == "file" and msg[3] == fileName), None)
+                              matching_message[4] = "error"
       elif operation == "new_convo":
             if messageType == "contact":
                   clearTerminal()
@@ -183,10 +233,15 @@ def manageResponse(serverMessage):
                   else:
                         client.sendMessage("['{}','{}','response',['new_convo','accepted']]<END>".format(myName, sender).encode('utf-8'), serverAddress)
       elif operation == "message":
-            messagesList.append([connectionName, message[0], messageType, message[1]])
-            if message[0] == len(messagesList):
-                  print("\033[91mWe probably lost some message(s) along the way\033[0m")
-            myScreen(True)
+            if messageType == "message":
+                  messagesList.append([connectionName, message[0], messageType, message[1]])
+                  if message[0] == len(messagesList):
+                        print("\033[91mWe probably lost some message(s) along the way\033[0m")
+                  myScreen(True)
+            elif messageType == "file":
+                  state = "not-downloaded"
+                  messagesList.append([connectionName, message[0], messageType, message[1], state])
+                  myScreen(True)
 
 def connect():
       global connectionName
@@ -219,7 +274,6 @@ def receiveSingleMessage():
                   running = False
 
 def waitMessage():
-
       buffer = b""
       running = True
       while running:
@@ -228,13 +282,11 @@ def waitMessage():
                         running = False
                   else:
                         serverMessage, address = client.receiveMessage()
-
                         if serverMessage is not None:
                               buffer += serverMessage
-
-                        while b"<END>" in buffer:
-                              message, buffer = buffer.split(b"<END>", 1)
-                              manageResponse(serverMessage=(message, address))
+                              while b"<END>" in buffer:
+                                    message, buffer = buffer.split(b"<END>", 1)
+                                    manageResponse(serverMessage=(message, address))
             except socket.timeout:
                   time.sleep(0.1)
             except Exception as e:
@@ -253,11 +305,9 @@ def uploadFile():
 
             fileName = input()
 
-            if fileName == "--cancel":
-                  return
-            
             while not fileName in files or fileName == "--cancel":
                   if fileName == "--cancel":
+                        myScreen(True)
                         return
                   fileName = input("please, choose a valid file\n")
             
@@ -266,6 +316,7 @@ def uploadFile():
             # stores message of file sent. State gets updated as received or not by the server
             state = "sent"
             messagesList.append([myName, messageId,"file",fileName,state])
+            myScreen(True)
 
             with open(file_path, 'rb') as file:
                   file.seek(0, os.SEEK_END)
@@ -273,7 +324,6 @@ def uploadFile():
                   file.seek(0)
                   total_readed = 0
                   more_chunks = 1
-                  
                   while chunk := file.read(1024):
                         offset = total_readed
                         total_readed += len(chunk)
@@ -286,19 +336,33 @@ def uploadFile():
             print("There are no files in 'files_to_send'")
             time.sleep(3)
 
+def downloadFile():
+      clientMessage = "['{}','server','download',['list','{}']]<END>".format(myName, connectionName, ).encode('utf-8')
+      client.sendMessage(clientMessage)
+      running = True
+      while running:
+            try:
+                  serverMessage = client.receiveMessage()
+                  running = False
+                  manageResponse(serverMessage=serverMessage)
+            except socket.timeout:
+                  time.sleep(0.1)
+      myScreen(True)
+
 def waitEntry():
       global messagesList, messageId
       while True:
             entry = input()
-            if entry == "--exit":
+            if entry == "":
+                  myScreen(True)
+            elif entry == "--exit":
                   print("finishing run\n")
                   stop_event.set()
                   break
             elif entry == "--upload":
                   uploadFile()
-                  myScreen(True)
             elif entry == "--download":
-                  myScreen(True)
+                  downloadFile()
             elif entry == "--help":
                   myScreen(True)
                   print("App client commands:\n\t'--upload' to choose a file from the 'files_to_send' folder to send to your contact\n\t'--download' to choose a file that your contact has sent to you to download to 'downloaded_files'\n\t'--exit' to quit the application\n\t'--cancel' to close the help instructions")
@@ -317,11 +381,12 @@ def closeConnection():
       client.closeConnection()
 
 def start():
-      global client, stop_event, connected, messageId
+      global client, stop_event, connected, messageId, filesList
       createDirectories()
       client = None
       connected = False
       messageId = 0
+      filesList = []
       stop_event = threading.Event()
       clearTerminal()
       try:
@@ -342,6 +407,6 @@ def start():
             waitMessageThread.join()
             closeConnection()
       except Exception as e:
-            print("OPA! achei {}".format(e))
+            print("Error: {}".format(e))
 
 start()
