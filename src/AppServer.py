@@ -225,6 +225,28 @@ def handleMessage(clientMessage):
                   # Formata a mensagem no formato desejado
                   serverMessage = "['server','{}','response',['download-list', {}]]<END>".format(sender, titles_str).encode('utf-8')
                   sendMessageToClient(client=sender, clientMessage=serverMessage)
+            elif messageType == "file":
+                  fileId, fileTitle = message[1].split('-',1)
+                  origin = message[0]
+                  destiny = sender
+
+                  matching_file = next((file for file in filesList if file[0] == origin and file[1] == destiny and file[2] == fileId and file[3] == fileTitle), None)
+                  
+                  if matching_file:
+                        file_data = matching_file[5]
+                        file_size = matching_file[6]
+                        total_readed = 0
+                        chunk_size = 1024
+
+                        while total_readed < file_size:
+                              chunk = file_data[total_readed:total_readed + chunk_size]
+                              offset = total_readed
+                              total_readed += len(chunk)
+                              more_chunks = 1 if total_readed < file_size else 0
+                              
+                              serverMessage = "['server','{}','response',['download','{}','{}',{},'{}',{}]]<END>".format(sender,fileId,fileTitle,more_chunks,offset,chunk).encode('utf-8')
+                              sendMessageToClient(client=sender, clientMessage=serverMessage)
+
 def start():
       global masterServer, clientsList, coms_type, portCounter, serverThreads, filesList
       clientsList = []
