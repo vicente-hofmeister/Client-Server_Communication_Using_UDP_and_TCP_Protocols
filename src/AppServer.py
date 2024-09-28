@@ -11,31 +11,51 @@ serverPort = 12000
 global masterServer, coms_type, clientsList, clientAddress, portCounter, serverThreads, filesList
 
 def clearTerminal():
-    if os.name == 'nt':  # Windows
-        os.system('cls')
-    else:  # Linux or macOS
-        os.system('clear')
+      '''
+      Cleans the terminal to display only the server information.
+
+      Checks the OS to execute the correct command.
+      '''
+      if os.name == 'nt':  # Windows
+            os.system('cls')
+      else:  # Linux or macOS
+            os.system('clear')
 
 def createDirectory():
+      '''
+      Creates the server_files directory to store files sent by clients. Not used for uploading files.
+      '''
       directory = "server_files"
       if not os.path.exists(directory):
             os.makedirs(directory)
 
 def saveFiles(fileData, fileName):
+      '''
+      Saves a file in the server_files directory.
+
+      Args:
+            fileData (bytes): The data to be saved in the file.
+            fileName (str): The name with which the file will be saved.
+      '''
       filePath = os.path.join('server_files', fileName)
       with open(filePath, 'wb') as f:
             f.write(fileData)
       print(f"File saved at: {filePath}") 
 
 def waitEntry():
+      '''
+      Waits for a user command to stop the server. If the user enters 'q', the server stops.
+      '''
       while True:
             entry = input('Press \'q\' to stop \n\n')
             if entry == 'q':
                   print('finishing run \n')
-                  # masterServer.closeSocket()
                   break
 
 def getComsType():
+      '''
+      Asks the user to specify the type of communication to be used. Only accepts 'UDP' or 'TCP', case-insensitive.
+      '''
       while True:
             server_type = input('UDP or TCP?\n').strip().lower()
             if server_type in ['udp', 'tcp']:
@@ -44,6 +64,18 @@ def getComsType():
                   print('invalid input\n')
 
 def runServer(server):
+      '''
+      Keeps a server socket running.
+
+      The socket listens for incoming messages and sends the received message to the handleMessage method.
+
+      Uses a buffer to check entire messages, which is necessary due to the TCP connection often sending concatenated messages.
+
+      If the socket times out, the method waits 0.1 seconds to allow other parts of the app to use the socket.
+            
+      Args:
+            server (socket): The server socket to be managed by runServer.
+      '''
       global clientAddress
       buffer = b""
       running = True
@@ -52,10 +84,9 @@ def runServer(server):
                   clientMessage, clientAddress = server.receiveMessage()
                   if clientMessage is not None:
                         buffer += clientMessage
-                        while b"<END>" in buffer:  # Verifica se há uma mensagem completa (delimitada)
-                              # Divide o buffer pela primeira ocorrência de <END>
+                        while b"<END>" in buffer:
                               message, buffer = buffer.split(b"<END>", 1)  
-                              handleMessage(message) # Passa a mensagem completa para ser processada
+                              handleMessage(message)
             except socket.timeout:
                   time.sleep(0.1)
             except ConnectionResetError:
@@ -64,6 +95,23 @@ def runServer(server):
                   print(f"An error occurred: {e}")
 
 def decodeMessage(clientMessage):
+      '''
+      Decodes received messages.
+
+      The message protocol used by the server and clients is as follows:
+      ['sender', 'receiver', 'operation', ['messageType', message (one or more fields)]]<END>
+
+      Args:
+            clientMessage (bytes): The encoded received message.
+
+      Returns:
+            sender (str): The name of the sender.
+            receiver (str): The name of the intended recipient (even though every message received is managed by the server).
+            operation (str): The type of operation being requested/performed.
+            messageType (str): The type/content of the message.
+            message (list): A list containing the message(s).
+      '''
+
       try:
             clientMessage = clientMessage.rstrip(b"<END>")
             messageReceived = ast.literal_eval(clientMessage.decode('utf-8'))
@@ -84,12 +132,33 @@ def decodeMessage(clientMessage):
             print(f"Error: {e}")
 
 def sendMessageToClient(client, clientMessage):
+      '''
+      Sends a message to a registered client using the client's dedicated server socket.
+
+      Args:
+            client (str): The name of the client, used to search for the client in the clientsList.
+            clientMessage (bytes): The encoded message to be sent to the client.
+      '''
       for clnt in clientsList:
             if clnt[0] == client:
                   clnt[1].sendMessage(clientMessage, clnt[2])
                   break
 
 def handleMessage(clientMessage):
+      '''
+      Handles the received messages.
+
+      First, decodes the message and then checks the operation:
+            - register: A new client wants to register. Checks if the client name is already registered. If not, creates a new server socket dedicated to the client and starts it in a new thread. Responds to the client confirming registration.
+            - new_convo: A client wants to connect with another. Checks if the requested contact exists and if it's available.
+            - message: A client is sending a message or a file to its connection. If the messageType is 'message,' it's text; if it's 'file,' it's a .txt file. The file might come fragmented, and this method manages that.
+            - bye_bye: A client is disconnecting.
+            - response: The client is responding to an operation made by the server.
+            - download: The client wants to download a file sent by its connection. If messageType is 'list,' the client wants the complete list of files. Otherwise, if it's 'file,' it wants to download the selected file.
+
+      Args:
+            clientMessage (bytes): The encoded message received from a client.
+      '''
       global portCounter, filesList
       sender, receiver, operation, messageType, message, clientAddress = decodeMessage(clientMessage)
       if operation == "register":
@@ -248,6 +317,13 @@ def handleMessage(clientMessage):
                               sendMessageToClient(client=sender, clientMessage=serverMessage)
 
 def start():
+      '''
+      Manages the app's runtime.
+
+      Initializes global variables, including the master socket, which clients use for initial contact. The socket type (UDP or TCP) depends on the user's selection.
+
+      The master socket, as well as every other socket, runs in its own thread.
+      '''
       global masterServer, clientsList, coms_type, portCounter, serverThreads, filesList
       clientsList = []
       filesList = []

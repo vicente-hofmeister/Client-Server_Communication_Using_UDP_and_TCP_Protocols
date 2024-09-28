@@ -21,10 +21,15 @@ LIGHT_RED = '\033[91m'
 LIGHT_GREEN = '\033[92m'
 
 def clearTerminal():
-    if os.name == 'nt':  # Windows
-        os.system('cls')
-    else:  # Linux or macOS
-        os.system('clear')
+      '''
+      Cleans the terminal to display only the server information.
+
+      Checks the OS to execute the correct command.
+      '''
+      if os.name == 'nt':  # Windows
+            os.system('cls')
+      else:  # Linux or macOS
+            os.system('clear')
 
 def printMessages():
     for msg in messagesList:
