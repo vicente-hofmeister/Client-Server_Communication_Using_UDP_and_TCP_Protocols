@@ -22,6 +22,8 @@ class TCPserver:
             '''
             Initializes the server socket with its port and client name.
 
+            The socket has a 0.5-second timeout to allow the same socket to receive and send messages 'simultaneously.'
+
             Args:
                   serverPort (int): The port number that this server socket uses.
                   client (str): The name of the client connected through this server socket.

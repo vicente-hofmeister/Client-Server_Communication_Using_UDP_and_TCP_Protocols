@@ -20,10 +20,12 @@ class UDPserver:
             '''
             Initializes the server socket with its port and client name.
 
+            The socket has a 0.5-second timeout to allow the same socket to receive and send messages 'simultaneously.'
+
             Args:
                   serverPort (int): The port number that this server socket uses.
                   client (str): The name of the client connected through this server socket.
-            '''    
+            '''
             self.serverPort = serverPort
             self.serverSocket = socket(AF_INET, SOCK_DGRAM)
             self.serverSocket.bind(('', self.serverPort))
@@ -32,12 +34,10 @@ class UDPserver:
 
       def receiveMessage(self):
             '''
-            
-            Receives a message from the client. If there is not a client connected, waits to connect.
+            Receives a message from the client. If no client is connected, waits for a connection.
 
             Returns:
-                  bytes: Encoded client message
-
+                  bytes: The encoded client message.
             '''
             clientMessage =  self.serverSocket.recvfrom(2048)
             return clientMessage
@@ -49,8 +49,6 @@ class UDPserver:
             Returns:
                   bytes: The encoded message from the client.
             '''
-
-
             self.serverSocket.sendto(message, address)
 
       def getClient(self):
