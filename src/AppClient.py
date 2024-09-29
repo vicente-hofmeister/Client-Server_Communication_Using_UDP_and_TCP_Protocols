@@ -32,55 +32,77 @@ def clearTerminal():
             os.system('clear')
 
 def printMessages():
-    for msg in messagesList:
-      printedMessage = ""
-      if msg[0] == myName:
-            printedMessage = f"{YELLOW}{msg[0]}:{Style.RESET_ALL}"
-      else:
-            printedMessage = f"{LIGHT_BLUE}{msg[0]}:{Style.RESET_ALL}"
+      '''
+      Prints the messages on the terminal. Uses colorama to manage colors.
+      '''
+      for msg in messagesList:
+            printedMessage = ""
+            if msg[0] == myName:
+                  printedMessage = f"{YELLOW}{msg[0]}:{Style.RESET_ALL}"
+            else:
+                  printedMessage = f"{LIGHT_BLUE}{msg[0]}:{Style.RESET_ALL}"
 
-      if msg[2] == "message":
-            printedMessage += f"  {msg[3]}"
-      elif msg[2] == "file":
-            if msg[4] == "sent":
-                  printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]"
-            elif msg[4] == "received":
-                  printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]"
-            elif msg[4] == "error":
-                  printedMessage += f"  {LIGHT_RED}[{msg[3].upper()}]"
-            elif msg[4] == "not-downloaded":
-                  printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]"
-            elif msg[4] == "downloaded":
-                  printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]"
+            if msg[2] == "message":
+                  printedMessage += f"  {msg[3]}"
+            elif msg[2] == "file":
+                  if msg[4] == "sent":
+                        printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]"
+                  elif msg[4] == "received":
+                        printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]"
+                  elif msg[4] == "error":
+                        printedMessage += f"  {LIGHT_RED}[{msg[3].upper()}]"
+                  elif msg[4] == "not-downloaded":
+                        printedMessage += f"  {LIGHT_GRAY}[{msg[3].upper()}]"
+                  elif msg[4] == "downloaded":
+                        printedMessage += f"  {LIGHT_GREEN}[{msg[3].upper()}]"
 
-      print(printedMessage)
+            print(printedMessage)
 
 def myScreen(complete):
-    clearTerminal()
-    print(f"{YELLOW}{myName}'s chat:{Style.RESET_ALL}")
-    print(f"{YELLOW}Talking to {serverAddress}{Style.RESET_ALL}")
+      '''
+      Prints the client screen on the terminal. If the client is connected with another, uses 'complete' to show messages.
 
-    if complete:
-        printMessages()
-        print(f"{YELLOW}Type a new message to send: (--help to see the commands){Style.RESET_ALL}")
+      Args:
+            complete (bool): True if the messages are shown, False otherwise.
+      '''
+      clearTerminal()
+      print(f"{YELLOW}{myName}'s chat:{Style.RESET_ALL}")
+      print(f"{YELLOW}Talking to {serverAddress}{Style.RESET_ALL}")
+
+      if complete:
+            printMessages()
+            print(f"{YELLOW}Type a new message to send: (--help to see the commands){Style.RESET_ALL}")
 
 def createDirectories():
-    directories = ['downloaded_files', 'files_to_send']
+      '''
+      Creates the 'download_files' and 'files_to_send' directories if they don't already exist.
+      '''
+      directories = ['downloaded_files', 'files_to_send']
 
-    for directory in directories:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-            print(f"Diretório '{directory}' criado.")
-        else:
-            print(f"Diretório '{directory}' já existe.")
+      for directory in directories:
+            if not os.path.exists(directory):
+                  os.makedirs(directory)
+                  print(f"Diretório '{directory}' criado.")
+            else:
+                  print(f"Diretório '{directory}' já existe.")
 
 def saveFiles(fileData, fileName):
+      '''
+      Saves a file in the 'downloaded_files' directory.
+
+      Args:
+            fileData (bytes): The data to be saved in the file.
+            fileName (str): The name with which the file will be saved.
+      '''
       filePath = os.path.join('downloaded_files', fileName)
       with open(filePath, 'wb') as f:
             f.write(fileData)
       print(f"File saved at: {filePath}") 
 
 def getComsType():
+      '''
+      Asks the user to specify the communication type to be used.
+      '''
       while True:
             server_type = input('UDP or TCP?\n').strip().lower()
             if server_type in ['udp', 'tcp']:
@@ -89,6 +111,9 @@ def getComsType():
                   print('invalid input')
 
 def initializeClient() :
+      '''
+      Gets the username to register and sends it to the server.
+      '''
       global myName
       clearTerminal()
       myName = input('What is your name?\n').strip()
@@ -97,6 +122,24 @@ def initializeClient() :
       manageResponse(serverMessage)
 
 def decodeMessage(serverMessage):
+      '''
+      Decodes received messages.
+
+      The client processes the message and the server address.
+
+      The message protocol used by the server and clients is as follows:
+      ['sender', 'receiver', 'operation', ['messageType', message (one or more fields)]]<END>
+
+      Args:
+            serverMessage (tuple): A tuple containing the encoded message (bytes) and the server address, which is also a tuple containing the IPv4 address (str) and the port (int) where the server socket is running.
+
+      Returns:
+            sender (str): The name of the sender.
+            receiver (str): The name of the intended recipient (even though every message is managed by the server).
+            operation (str): The type of operation being requested or performed.
+            messageType (str): The type or content of the message.
+            message (list): A list containing the message(s).
+      '''
       try:
             sMessage = serverMessage[0]
             sMessage = sMessage.rstrip(b"<END>")
@@ -118,6 +161,17 @@ def decodeMessage(serverMessage):
             print(f"Error: {e}")
 
 def manageResponse(serverMessage):
+      '''
+      Manages the client's response to a received message.
+
+      First, decodes the message and then checks the operation:
+            - response: The server is responding to an operation made by the client.
+            - new_convo: Another client wants to communicate with this client. This functionality is not implemented.
+            - message: The connected client sent a message or file to this client.
+
+      Args:
+            serverMessage (tuple): A tuple containing the encoded message (bytes) and the server address, which is also a tuple containing the IPv4 address (str) and the port (int) where the server socket is running.
+      '''
       global connected, messagesList, serverAddress, filesList
       sender, receiver, operation, messageType, message= decodeMessage(serverMessage)
 
@@ -249,6 +303,9 @@ def manageResponse(serverMessage):
                   myScreen(True)
 
 def connect():
+      '''
+      Asks the client whom they wish to connect with and sends the name to the server.
+      '''
       global connectionName
       friendName = input("Who do you wish to connect with? Write their name!\n")
       
@@ -267,6 +324,12 @@ def connect():
       manageResponse(serverMessage=serverMessage)
 
 def receiveSingleMessage():
+      '''
+      Receives a single message and then stops listening.
+
+      Returns:
+            serverMessage (tuple): A tuple containing the encoded message (bytes) and the server address, which is also a tuple containing the IPv4 address (str) and the port (int) where the server socket is running.
+      '''
       running = True
       while running:
             try:
@@ -279,6 +342,9 @@ def receiveSingleMessage():
                   running = False
 
 def waitMessage():
+      '''
+      Keeps listening to the server and receiving messages. Ensures that only a single, complete message is passed along.
+      '''
       buffer = b""
       running = True
       while running:
@@ -299,6 +365,11 @@ def waitMessage():
                   running = False
 
 def uploadFile():
+      '''
+      Client command to upload a file to the server. Chooses the file from the 'files_to_send' directory.
+
+      If the selected file is larger than 1024 bytes, it is fragmented before being sent to the server.
+      '''
       global messageId, messagesList
       directory = 'files_to_send'
       files = os.listdir(directory)
@@ -342,6 +413,9 @@ def uploadFile():
             time.sleep(3)
 
 def downloadFile():
+      '''
+      Client command to download a file sent by their connection. The client requests the server to list the available files for download. The download sequence is handled in messageResponse.
+      '''
       clientMessage = "['{}','server','download',['list','{}']]<END>".format(myName, connectionName, ).encode('utf-8')
       client.sendMessage(clientMessage)
       running = True
@@ -355,6 +429,16 @@ def downloadFile():
       myScreen(True)
 
 def waitEntry():
+      '''
+      Waits for user input. There are special commands. If the user sends something that is not a command and is not blank, the client sends it as a message.
+
+      The commands are:
+            - exit: Quits the application.
+            - upload: Sends a file to the server.
+            - download: Fetches a file from the server sent by the connection.
+            - help: Displays the list of commands on the screen.
+            - cancel: Aborts the current operation.
+      '''
       global messagesList, messageId
       while True:
             entry = input()
@@ -381,11 +465,21 @@ def waitEntry():
                   myScreen(True)
       
 def closeConnection():
+      '''
+      Sends a message to the server indicating that the connection will be closed, then closes the socket.
+      '''
       clientMessage = "['{}','server','bye_bye',['','']]<END>".format(myName).encode('utf-8')
       client.sendMessage(clientMessage)
       client.closeConnection()
 
 def start():
+      '''
+      Manages the app's runtime.
+
+      Initializes global variables, including the socket.
+
+      The socket runs in a separate thread.
+      '''
       global client, stop_event, connected, messageId, filesList
       createDirectories()
       client = None

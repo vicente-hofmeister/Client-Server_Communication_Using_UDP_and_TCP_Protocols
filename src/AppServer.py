@@ -98,20 +98,21 @@ def decodeMessage(clientMessage):
       '''
       Decodes received messages.
 
+      The server processes only the message in this method.
+
       The message protocol used by the server and clients is as follows:
       ['sender', 'receiver', 'operation', ['messageType', message (one or more fields)]]<END>
 
       Args:
-            clientMessage (bytes): The encoded received message.
+            clientMessage (bytes): The encoded message received.
 
       Returns:
             sender (str): The name of the sender.
-            receiver (str): The name of the intended recipient (even though every message received is managed by the server).
-            operation (str): The type of operation being requested/performed.
-            messageType (str): The type/content of the message.
+            receiver (str): The name of the intended recipient (even though every message is managed by the server).
+            operation (str): The type of operation being requested or performed.
+            messageType (str): The type or content of the message.
             message (list): A list containing the message(s).
       '''
-
       try:
             clientMessage = clientMessage.rstrip(b"<END>")
             messageReceived = ast.literal_eval(clientMessage.decode('utf-8'))
